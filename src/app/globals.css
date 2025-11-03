@@ -82,9 +82,26 @@ a.text-background {
   color: #ffffff !important;
 }
 
+/* Fix all buttons with dark backgrounds */
+button.bg-neutral-900,
+button.bg-neutral-800,
+.bg-neutral-900,
+.bg-neutral-800 {
+  color: #ffffff !important;
+}
+
+button.bg-neutral-900 *,
+button.bg-neutral-800 *,
+.bg-neutral-900 *,
+.bg-neutral-800 * {
+  color: #ffffff !important;
+}
+
 /* Ensure icons in dark backgrounds are white */
 .bg-foreground svg,
-.text-background svg {
+.text-background svg,
+.bg-neutral-900 svg,
+.bg-neutral-800 svg {
   color: #ffffff !important;
   stroke: currentColor;
 }
@@ -105,17 +122,45 @@ a.text-background {
 
 /* Quick link colored backgrounds */
 .bg-blue-500 { background-color: #3b82f6; }
+.bg-indigo-500 { background-color: #6366f1; }
 .bg-green-500 { background-color: #22c55e; }
+.bg-red-500 { background-color: #ef4444; }
 .bg-purple-500 { background-color: #a855f7; }
+.bg-cyan-500 { background-color: #06b6d4; }
 .bg-orange-500 { background-color: #f97316; }
 .bg-pink-500 { background-color: #ec4899; }
+.bg-yellow-500 { background-color: #eab308; }
 .bg-gray-500 { background-color: #6b7280; }
 
 .bg-blue-500 svg,
+.bg-indigo-500 svg,
 .bg-green-500 svg,
+.bg-red-500 svg,
 .bg-purple-500 svg,
+.bg-cyan-500 svg,
 .bg-orange-500 svg,
 .bg-pink-500 svg,
+.bg-yellow-500 svg,
 .bg-gray-500 svg {
+  color: #ffffff !important;
+}
+
+/* Ensure text on dark backgrounds is always white */
+.bg-neutral-900 h1,
+.bg-neutral-900 h2,
+.bg-neutral-900 h3,
+.bg-neutral-900 p,
+.bg-neutral-900 span,
+.bg-neutral-800 h1,
+.bg-neutral-800 h2,
+.bg-neutral-800 h3,
+.bg-neutral-800 p,
+.bg-neutral-800 span {
+  color: #ffffff !important;
+}
+
+/* Override Tailwind's text color classes on dark backgrounds */
+.bg-neutral-900 .text-white,
+.bg-neutral-800 .text-white {
   color: #ffffff !important;
 }

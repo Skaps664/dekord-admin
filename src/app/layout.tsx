@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AuthCheck from "@/components/auth-check";
+import Sidebar from "@/components/sidebar";
 
 export const metadata: Metadata = {
   title: "dekord Admin Panel",
@@ -13,8 +15,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
-        {children}
+      <body className="antialiased bg-neutral-50">
+        <AuthCheck>
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <main className="flex-1 w-full">
+              {children}
+            </main>
+          </div>
+        </AuthCheck>
       </body>
     </html>
   );

@@ -2,93 +2,94 @@
 
 import { motion } from "framer-motion"
 import Link from "next/link"
+import Image from "next/image"
 import { 
-  LayoutDashboard, 
   Package, 
   ShoppingCart, 
-  FileText, 
-  Settings, 
-  BarChart3, 
   Users,
   TrendingUp,
   TrendingDown,
-  ArrowRight
+  ArrowUpRight,
+  ArrowDownRight,
+  Eye,
+  Clock,
+  DollarSign,
+  Activity
 } from "lucide-react"
 
-const stats = [
+// Last 24 Hours Stats
+const last24HoursStats = [
   {
-    title: "Total Revenue",
-    value: "Rs. 248,500",
-    change: "+12.5%",
-    trend: "up",
-    icon: TrendingUp
-  },
-  {
-    title: "Total Orders",
-    value: "156",
+    title: "Revenue (24h)",
+    value: "Rs. 18,450",
     change: "+8.2%",
     trend: "up",
-    icon: ShoppingCart
+    icon: DollarSign,
+    subtitle: "vs previous 24h"
   },
   {
-    title: "Products",
-    value: "12",
-    change: "+2",
+    title: "Orders (24h)",
+    value: "23",
+    change: "+12.5%",
     trend: "up",
-    icon: Package
+    icon: ShoppingCart,
+    subtitle: "vs previous 24h"
   },
   {
-    title: "Total Users",
-    value: "1,234",
-    change: "+15.3%",
+    title: "Visitors (24h)",
+    value: "1,284",
+    change: "+5.8%",
     trend: "up",
-    icon: Users
+    icon: Eye,
+    subtitle: "vs previous 24h"
+  },
+  {
+    title: "Conversion Rate",
+    value: "1.8%",
+    change: "-0.3%",
+    trend: "down",
+    icon: Activity,
+    subtitle: "vs previous 24h"
   }
 ]
 
-const quickLinks = [
+// Top Performing Products
+const topProducts = [
   {
-    title: "Products",
-    description: "Manage your product catalog",
-    href: "/products",
-    icon: Package,
-    color: "bg-blue-500"
+    id: 1,
+    name: "dekord W-60 USB-C Cable",
+    image: "/braided-cable-coiled-aesthetic-still.jpg",
+    sales: 45,
+    revenue: "Rs. 112,500",
+    views: 1250,
+    conversionRate: "3.6%"
   },
   {
-    title: "Orders",
-    description: "View and manage orders",
-    href: "/orders",
-    icon: ShoppingCart,
-    color: "bg-green-500"
+    id: 2,
+    name: "dekord W-60 USB-C Cable (2m)",
+    image: "/braided-cable-coiled-aesthetic-still.jpg",
+    sales: 28,
+    revenue: "Rs. 89,600",
+    views: 890,
+    conversionRate: "3.1%"
   },
   {
-    title: "Blog Posts",
-    description: "Create and edit blog content",
-    href: "/blog",
-    icon: FileText,
-    color: "bg-purple-500"
-  },
-  {
-    title: "Analytics",
-    description: "Track website performance",
-    href: "/analytics",
-    icon: BarChart3,
-    color: "bg-orange-500"
-  },
-  {
-    title: "Users",
-    description: "Manage customer accounts",
-    href: "/users",
-    icon: Users,
-    color: "bg-pink-500"
-  },
-  {
-    title: "Settings",
-    description: "Configure website settings",
-    href: "/settings",
-    icon: Settings,
-    color: "bg-gray-500"
+    id: 3,
+    name: "dekord W-100 USB-C Cable",
+    image: "/braided-cable-coiled-aesthetic-still.jpg",
+    sales: 18,
+    revenue: "Rs. 63,000",
+    views: 720,
+    conversionRate: "2.5%"
   }
+]
+
+// Traffic Sources (Last 24h)
+const trafficSources = [
+  { source: "Direct", visitors: 542, percentage: 42 },
+  { source: "Social Media", visitors: 385, percentage: 30 },
+  { source: "Google Search", visitors: 257, percentage: 20 },
+  { source: "Referral", visitors: 100, percentage: 8 }
 ]
 
 const recentOrders = [
@@ -103,118 +104,177 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="bg-white border-b border-neutral-200 sticky top-0 z-10">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <LayoutDashboard className="w-8 h-8 text-foreground" />
-              <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-neutral-900">Dashboard</h1>
+              <p className="text-sm text-neutral-600">Welcome back to dekord admin</p>
             </div>
-            <Link 
-              href="/" 
-              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              View Website →
-            </Link>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <motion.div
-              key={stat.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-              className="bg-white rounded-xl border border-border p-6 shadow-sm"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <stat.icon className="w-8 h-8 text-muted-foreground" />
-                <span className={`text-sm font-semibold ${stat.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                  {stat.change}
-                </span>
-              </div>
-              <h3 className="text-sm text-muted-foreground mb-1">{stat.title}</h3>
-              <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Quick Links */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-foreground mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quickLinks.map((link, index) => (
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
+        {/* Last 24 Hours Stats */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5 text-neutral-600" />
+            <h2 className="text-lg font-bold text-neutral-900">Last 24 Hours</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {last24HoursStats.map((stat, index) => (
               <motion.div
-                key={link.title}
+                key={stat.title}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
+                transition={{ duration: 0.4, delay: index * 0.1 }}
+                className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm"
               >
-                <Link href={link.href} className="group block">
-                  <div className="bg-white rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition-all">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`w-12 h-12 rounded-lg ${link.color} flex items-center justify-center`}>
-                        <link.icon className="w-6 h-6 text-white" />
-                      </div>
-                      <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
-                    </div>
-                    <h3 className="text-lg font-bold text-foreground mb-1">{link.title}</h3>
-                    <p className="text-sm text-muted-foreground">{link.description}</p>
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-10 h-10 rounded-lg ${stat.trend === 'up' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center`}>
+                    <stat.icon className={`w-5 h-5 ${stat.trend === 'up' ? 'text-green-600' : 'text-red-600'}`} />
                   </div>
-                </Link>
+                  <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+                    stat.trend === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {stat.trend === 'up' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                    {stat.change}
+                  </div>
+                </div>
+                <h3 className="text-sm text-neutral-600 mb-1">{stat.title}</h3>
+                <p className="text-2xl font-bold text-neutral-900 mb-1">{stat.value}</p>
+                <p className="text-xs text-neutral-500">{stat.subtitle}</p>
               </motion.div>
             ))}
           </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Top Performing Products */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+            className="lg:col-span-2 bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden"
+          >
+            <div className="p-6 border-b border-neutral-200 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-neutral-900">Top Performing Products</h2>
+              <Link href="/products" className="text-sm font-medium text-neutral-600 hover:text-neutral-900">
+                View All →
+              </Link>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                {topProducts.map((product, index) => (
+                  <div key={product.id} className="flex items-center gap-4 p-4 rounded-lg hover:bg-neutral-50 transition-colors">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-neutral-100 text-sm font-bold text-neutral-600">
+                      #{index + 1}
+                    </div>
+                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        width={64}
+                        height={64}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-neutral-900 truncate">{product.name}</h3>
+                      <div className="flex items-center gap-4 mt-1 text-sm text-neutral-600">
+                        <span>{product.sales} sales</span>
+                        <span>•</span>
+                        <span>{product.views} views</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-neutral-900">{product.revenue}</p>
+                      <p className="text-sm text-green-600">{product.conversionRate} CR</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Traffic Sources */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+            className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden"
+          >
+            <div className="p-6 border-b border-neutral-200">
+              <h2 className="text-lg font-bold text-neutral-900">Traffic Sources (24h)</h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                {trafficSources.map((source) => (
+                  <div key={source.source}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-neutral-700">{source.source}</span>
+                      <span className="text-sm font-bold text-neutral-900">{source.visitors}</span>
+                    </div>
+                    <div className="w-full bg-neutral-100 rounded-full h-2">
+                      <div
+                        className="bg-neutral-900 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${source.percentage}%` }}
+                      />
+                    </div>
+                    <div className="mt-1 text-xs text-neutral-500">{source.percentage}% of traffic</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         {/* Recent Orders */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 1 }}
-          className="bg-white rounded-xl border border-border shadow-sm overflow-hidden"
+          transition={{ duration: 0.4, delay: 0.7 }}
+          className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden"
         >
-          <div className="p-6 border-b border-border flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground">Recent Orders</h2>
-            <Link href="/orders" className="text-sm font-medium text-foreground hover:underline">
+          <div className="p-6 border-b border-neutral-200 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-neutral-900">Recent Orders</h2>
+            <Link href="/orders" className="text-sm font-medium text-neutral-600 hover:text-neutral-900">
               View All →
             </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-neutral-50 border-b border-border">
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
                     Order ID
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
                     Amount
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
                     Date
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-neutral-200">
                 {recentOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-900">
                       {order.id}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
                       {order.customer}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-neutral-900">
                       {order.amount}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -227,7 +287,7 @@ export default function AdminDashboard() {
                         {order.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
                       {order.date}
                     </td>
                   </tr>

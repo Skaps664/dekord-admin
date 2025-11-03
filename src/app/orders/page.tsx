@@ -4,7 +4,6 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { 
-  ArrowLeft, 
   Search, 
   Filter,
   Eye,
@@ -113,16 +112,14 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="bg-white border-b border-neutral-200 sticky top-0 z-10">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
-                <ArrowLeft className="w-6 h-6" />
-              </Link>
-              <h1 className="text-2xl font-bold text-foreground">Orders</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-neutral-900">Orders</h1>
+              <p className="text-sm text-neutral-600">Manage customer orders and fulfillment</p>
             </div>
-            <button className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-neutral-50 transition-colors">
+            <button className="inline-flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
               <Download className="w-4 h-4" />
               Export
             </button>
@@ -130,7 +127,7 @@ export default function OrdersPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters */}
         <div className="bg-white rounded-xl border border-border p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
