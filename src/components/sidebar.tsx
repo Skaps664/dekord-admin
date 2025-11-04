@@ -31,16 +31,17 @@ type NavItem = {
 
 const navigation: NavItem[] = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Products", href: "/products", icon: Package },
   { name: "Collections", href: "/collections", icon: Grid3x3 },
-  { name: "Orders", href: "/orders", icon: ShoppingCart },
-  { name: "Discounts", href: "/discounts", icon: Tag },
-  { name: "Email Marketing", href: "/emails", icon: Mail },
   { name: "Blog", href: "/blog", icon: FileText },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Users", href: "/users", icon: Users },
-  { name: "Integrations", href: "/integrations", icon: Plug },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Users", href: "/users", icon: Users },  
+  { name: "Discounts", href: "/discounts", icon: Tag },
+  { name: "Email Marketing", href: "/emails", icon: Mail },
+
+  // { name: "Integrations", href: "/integrations", icon: Plug },
+  // { name: "Settings", href: "/settings", icon: Settings },
 ]
 
 export default function Sidebar() {

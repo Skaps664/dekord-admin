@@ -1,13 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
 import Link from "next/link"
 import { ArrowLeft, Save, Upload, X, Plus, Loader2 } from "lucide-react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
-import { createProduct, createVariant } from "@/lib/services/products"
+import { getProduct, updateProduct, createVariant, updateVariant, deleteVariant } from "@/lib/services/products"
 
 interface Collection {
   id: string
@@ -16,21 +15,25 @@ interface Collection {
 }
 
 interface Variant {
+  id?: string
   length: string
   color: string
   sku: string
   stock: number
-  price_override?: number
+  price_override?: number | null
 }
 
-export default function NewProductPage() {
+export default function EditProductPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const params = useParams()
+  const productId = params?.id as string
+
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [collections, setCollections] = useState<Collection[]>([])
   
   const [productData, setProductData] = useState({
     name: "",
-    sku: "",
     category: "cables",
     description: "",
     price: "",
@@ -40,7 +43,12 @@ export default function NewProductPage() {
     meta_description: ""
   })
 
-  const [images, setImages] = useState<{
+  const [existingImages, setExistingImages] = useState({
+    main: "",
+    additional: ["", "", "", ""]
+  })
+
+  const [newImages, setNewImages] = useState<{
     main: File | null
     additional: (File | null)[]
   }>({
@@ -56,14 +64,73 @@ export default function NewProductPage() {
     additional: [null, null, null, null]
   })
 
-  const [variants, setVariants] = useState<Variant[]>([
-    { length: "1m", color: "Black", sku: "", stock: 0, price_override: undefined }
-  ])
+  const [variants, setVariants] = useState<Variant[]>([])
+  const [deletedVariantIds, setDeletedVariantIds] = useState<string[]>([])
 
-  // Load collections on mount
   useEffect(() => {
+    loadProduct()
     loadCollections()
-  }, [])
+  }, [productId])
+
+  const loadProduct = async () => {
+    if (!productId) return
+
+    const { data, error } = await getProduct(productId)
+    
+    if (error || !data) {
+      alert('Failed to load product')
+      router.push('/products')
+      return
+    }
+
+    // Set product data
+    setProductData({
+      name: data.name || "",
+      category: data.category || "cables",
+      description: data.description || "",
+      price: data.price?.toString() || "",
+      status: data.status || "active",
+      collection_id: "", // Will load from collection_products
+      meta_title: data.meta_title || "",
+      meta_description: data.meta_description || ""
+    })
+
+    // Set existing images
+    setExistingImages({
+      main: data.main_image || "",
+      additional: [
+        data.image_2 || "",
+        data.image_3 || "",
+        data.image_4 || "",
+        data.image_5 || ""
+      ]
+    })
+
+    // Set variants
+    if (data.variants && data.variants.length > 0) {
+      setVariants(data.variants.map((v: any) => ({
+        id: v.id,
+        length: v.length || "1m",
+        color: v.color || "Black",
+        sku: v.sku || "",
+        stock: v.stock || 0,
+        price_override: v.price_override
+      })))
+    }
+
+    // Load collection
+    const { data: collectionData } = await supabase
+      .from('collection_products')
+      .select('collection_id')
+      .eq('product_id', productId)
+      .single()
+    
+    if (collectionData) {
+      setProductData(prev => ({ ...prev, collection_id: collectionData.collection_id }))
+    }
+
+    setLoading(false)
+  }
 
   const loadCollections = async () => {
     const { data, error } = await supabase
@@ -74,7 +141,6 @@ export default function NewProductPage() {
     
     if (error) {
       console.error('Error loading collections:', error)
-      alert('Failed to load collections')
     } else if (data) {
       setCollections(data)
     }
@@ -83,7 +149,7 @@ export default function NewProductPage() {
   const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setImages({ ...images, main: file })
+      setNewImages({ ...newImages, main: file })
       const reader = new FileReader()
       reader.onloadend = () => {
         setImagePreviews({ ...imagePreviews, main: reader.result as string })
@@ -95,9 +161,9 @@ export default function NewProductPage() {
   const handleAdditionalImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const newImages = [...images.additional]
-      newImages[index] = file
-      setImages({ ...images, additional: newImages })
+      const newImgs = [...newImages.additional]
+      newImgs[index] = file
+      setNewImages({ ...newImages, additional: newImgs })
       
       const reader = new FileReader()
       reader.onloadend = () => {
@@ -110,31 +176,38 @@ export default function NewProductPage() {
   }
 
   const removeMainImage = () => {
-    setImages({ ...images, main: null })
+    setNewImages({ ...newImages, main: null })
     setImagePreviews({ ...imagePreviews, main: null })
+    setExistingImages({ ...existingImages, main: "" })
   }
 
   const removeAdditionalImage = (index: number) => {
-    const newImages = [...images.additional]
-    newImages[index] = null
-    setImages({ ...images, additional: newImages })
+    const newImgs = [...newImages.additional]
+    newImgs[index] = null
+    setNewImages({ ...newImages, additional: newImgs })
     
     const newPreviews = [...imagePreviews.additional]
     newPreviews[index] = null
     setImagePreviews({ ...imagePreviews, additional: newPreviews })
+
+    const newExisting = [...existingImages.additional]
+    newExisting[index] = ""
+    setExistingImages({ ...existingImages, additional: newExisting })
   }
 
   const addVariant = () => {
-    setVariants([...variants, { length: "1m", color: "Black", sku: "", stock: 0, price_override: undefined }])
+    setVariants([...variants, { length: "1m", color: "Black", sku: "", stock: 0, price_override: null }])
   }
 
   const removeVariant = (index: number) => {
-    if (variants.length > 1) {
-      setVariants(variants.filter((_, i) => i !== index))
+    const variant = variants[index]
+    if (variant.id) {
+      setDeletedVariantIds([...deletedVariantIds, variant.id])
     }
+    setVariants(variants.filter((_, i) => i !== index))
   }
 
-  const updateVariant = (index: number, field: keyof Variant, value: string | number) => {
+  const updateVariantField = (index: number, field: keyof Variant, value: string | number) => {
     const newVariants = [...variants]
     newVariants[index] = { ...newVariants[index], [field]: value }
     setVariants(newVariants)
@@ -169,118 +242,123 @@ export default function NewProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validation
     if (!productData.collection_id) {
       alert('Please select a collection')
       return
     }
-    
-    if (!images.main) {
-      alert('Please upload a main product image')
-      return
-    }
 
     if (variants.some(v => !v.sku || v.stock < 0)) {
-      alert('Please fill in all variant details (SKU and stock)')
+      alert('Please fill in all variant details')
       return
     }
 
-    setLoading(true)
+    setSaving(true)
 
     try {
-      // Upload main image
-      const mainImageUrl = await uploadImage(images.main, 'main')
-      if (!mainImageUrl) {
-        alert('Failed to upload main image')
-        setLoading(false)
-        return
+      // Upload new main image if provided
+      let mainImageUrl = existingImages.main
+      if (newImages.main) {
+        const url = await uploadImage(newImages.main, 'main')
+        if (url) mainImageUrl = url
       }
 
-      // Upload additional images
-      const additionalImageUrls: (string | null)[] = []
-      for (let i = 0; i < images.additional.length; i++) {
-        const file = images.additional[i]
+      // Upload new additional images
+      const additionalImageUrls = [...existingImages.additional]
+      for (let i = 0; i < newImages.additional.length; i++) {
+        const file = newImages.additional[i]
         if (file) {
           const url = await uploadImage(file, `additional-${i}`)
-          additionalImageUrls.push(url)
-        } else {
-          additionalImageUrls.push(null)
+          if (url) additionalImageUrls[i] = url
         }
       }
 
-      // Generate slug from name
-      const slug = productData.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '')
-
-      // Create product
-      const { data: product, error: productError } = await createProduct({
+      // Update product
+      const { error: productError } = await updateProduct(productId, {
         name: productData.name,
-        slug: slug,
-        sku: productData.sku,
         description: productData.description || null,
         category: productData.category,
         price: parseFloat(productData.price),
-        stock: variants.reduce((sum, v) => sum + v.stock, 0), // Total stock from variants
+        stock: variants.reduce((sum, v) => sum + v.stock, 0),
         status: productData.status,
         main_image: mainImageUrl,
-        image_2: additionalImageUrls[0],
-        image_3: additionalImageUrls[1],
-        image_4: additionalImageUrls[2],
-        image_5: additionalImageUrls[3],
+        image_2: additionalImageUrls[0] || null,
+        image_3: additionalImageUrls[1] || null,
+        image_4: additionalImageUrls[2] || null,
+        image_5: additionalImageUrls[3] || null,
         meta_title: productData.meta_title || null,
         meta_description: productData.meta_description || null,
-        og_image: null,
       })
 
-      if (productError || !product) {
-        alert(`Failed to create product: ${productError}`)
-        setLoading(false)
+      if (productError) {
+        alert(`Failed to update product: ${productError}`)
+        setSaving(false)
         return
       }
 
-      // Create variants
-      for (let i = 0; i < variants.length; i++) {
-        const variant = variants[i]
-        const { error: variantError } = await createVariant({
-          product_id: product.id,
-          length: variant.length,
-          color: variant.color,
-          sku: variant.sku,
-          stock: variant.stock,
-          price_override: variant.price_override || null,
-          variant_image: null,
-          is_available: true,
-          is_default: i === 0 // First variant is the base/default
-        })
+      // Delete removed variants
+      for (const variantId of deletedVariantIds) {
+        await deleteVariant(variantId)
+      }
 
-        if (variantError) {
-          console.error('Error creating variant:', variantError)
+      // Update or create variants
+      for (const variant of variants) {
+        if (variant.id) {
+          // Update existing variant
+          await updateVariant(variant.id, {
+            length: variant.length,
+            color: variant.color,
+            sku: variant.sku,
+            stock: variant.stock,
+            price_override: variant.price_override || null,
+          })
+        } else {
+          // Create new variant
+          await createVariant({
+            product_id: productId,
+            length: variant.length,
+            color: variant.color,
+            sku: variant.sku,
+            stock: variant.stock,
+            price_override: variant.price_override || null,
+            variant_image: null,
+            is_available: true
+          })
         }
       }
 
-      // Link product to collection
-      const { error: linkError } = await supabase
+      // Update collection link
+      await supabase
+        .from('collection_products')
+        .delete()
+        .eq('product_id', productId)
+      
+      await supabase
         .from('collection_products')
         .insert({
           collection_id: productData.collection_id,
-          product_id: product.id,
+          product_id: productId,
           sort_order: 0
         })
 
-      if (linkError) {
-        console.error('Error linking to collection:', linkError)
-      }
-
-      alert('Product created successfully!')
+      alert('Product updated successfully!')
       router.push('/products')
     } catch (error) {
-      console.error('Error creating product:', error)
-      alert('An error occurred while creating the product')
+      console.error('Error updating product:', error)
+      alert('An error occurred while updating the product')
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+          <p className="text-muted-foreground">Loading product...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -293,14 +371,14 @@ export default function NewProductPage() {
               <Link href="/products" className="text-muted-foreground hover:text-foreground transition-colors">
                 <ArrowLeft className="w-6 h-6" />
               </Link>
-              <h1 className="text-2xl font-bold text-foreground">Add New Product</h1>
+              <h1 className="text-2xl font-bold text-foreground">Edit Product</h1>
             </div>
             <button 
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={saving}
               className="inline-flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              {loading ? (
+              {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Saving...
@@ -308,7 +386,7 @@ export default function NewProductPage() {
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Save Product
+                  Save Changes
                 </>
               )}
             </button>
@@ -320,7 +398,7 @@ export default function NewProductPage() {
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Collection Selection - FIRST & REQUIRED */}
+            {/* Collection Selection */}
             <div className="bg-white rounded-xl border border-border p-6">
               <h2 className="text-lg font-bold text-foreground mb-4">Collection *</h2>
               <select
@@ -336,11 +414,6 @@ export default function NewProductPage() {
                   </option>
                 ))}
               </select>
-              {collections.length === 0 && (
-                <p className="text-sm text-red-600 mt-2">
-                  No collections found. Please create a collection first.
-                </p>
-              )}
             </div>
 
             {/* Basic Information */}
@@ -356,25 +429,8 @@ export default function NewProductPage() {
                     value={productData.name}
                     onChange={(e) => setProductData({ ...productData, name: e.target.value })}
                     className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
-                    placeholder="e.g. dekord W-60 USB-C Cable"
                     required
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Product SKU *
-                  </label>
-                  <input
-                    type="text"
-                    value={productData.sku}
-                    onChange={(e) => setProductData({ ...productData, sku: e.target.value })}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
-                    placeholder="e.g. DKD-W60"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Unique identifier for this product
-                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -399,12 +455,8 @@ export default function NewProductPage() {
                     value={productData.price}
                     onChange={(e) => setProductData({ ...productData, price: e.target.value })}
                     className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
-                    placeholder="2500"
                     required
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    This is the base price. Variants can have their own price overrides.
-                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -415,7 +467,6 @@ export default function NewProductPage() {
                     onChange={(e) => setProductData({ ...productData, description: e.target.value })}
                     rows={6}
                     className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none resize-none"
-                    placeholder="Detailed product description with features, specifications, and benefits..."
                   />
                 </div>
               </div>
@@ -424,12 +475,7 @@ export default function NewProductPage() {
             {/* Variants */}
             <div className="bg-white rounded-xl border border-border p-6">
               <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">Product Variants *</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    First variant is the base/default variant shown on catalog page
-                  </p>
-                </div>
+                <h2 className="text-lg font-bold text-foreground">Product Variants *</h2>
                 <button
                   type="button"
                   onClick={addVariant}
@@ -441,20 +487,13 @@ export default function NewProductPage() {
               </div>
               <div className="space-y-4">
                 {variants.map((variant, index) => (
-                  <div key={index} className="p-4 border border-border rounded-lg relative">
-                    {index === 0 && (
-                      <div className="absolute -top-2 left-4 px-2 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded">
-                        Base Variant
-                      </div>
-                    )}
+                  <div key={index} className="p-4 border border-border rounded-lg">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Length *
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-2">Length *</label>
                         <select
                           value={variant.length}
-                          onChange={(e) => updateVariant(index, 'length', e.target.value)}
+                          onChange={(e) => updateVariantField(index, 'length', e.target.value)}
                           className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
                         >
                           <option value="0.5m">0.5m</option>
@@ -466,12 +505,10 @@ export default function NewProductPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Color *
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-2">Color *</label>
                         <select
                           value={variant.color}
-                          onChange={(e) => updateVariant(index, 'color', e.target.value)}
+                          onChange={(e) => updateVariantField(index, 'color', e.target.value)}
                           className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
                         >
                           <option value="Black">Black</option>
@@ -486,41 +523,32 @@ export default function NewProductPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          SKU *
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-2">SKU *</label>
                         <input
                           type="text"
                           value={variant.sku}
-                          onChange={(e) => updateVariant(index, 'sku', e.target.value)}
+                          onChange={(e) => updateVariantField(index, 'sku', e.target.value)}
                           className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
-                          placeholder="e.g. DKD-W60-BLK-1M"
                           required
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Stock *
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-2">Stock *</label>
                         <input
                           type="number"
                           value={variant.stock}
-                          onChange={(e) => updateVariant(index, 'stock', parseInt(e.target.value) || 0)}
+                          onChange={(e) => updateVariantField(index, 'stock', parseInt(e.target.value) || 0)}
                           className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
-                          placeholder="50"
                           required
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Price Override (Optional)
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-2">Price Override</label>
                         <input
                           type="number"
                           value={variant.price_override || ''}
-                          onChange={(e) => updateVariant(index, 'price_override', e.target.value ? parseFloat(e.target.value) : '')}
+                          onChange={(e) => updateVariantField(index, 'price_override', e.target.value ? parseFloat(e.target.value) : '')}
                           className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
-                          placeholder="Leave empty to use base price"
                         />
                       </div>
                       <div className="flex items-end">
@@ -545,34 +573,22 @@ export default function NewProductPage() {
               <h2 className="text-lg font-bold text-foreground mb-4">SEO & Meta</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Meta Title
-                  </label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Meta Title</label>
                   <input
                     type="text"
                     value={productData.meta_title}
                     onChange={(e) => setProductData({ ...productData, meta_title: e.target.value })}
                     className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
-                    placeholder="Buy dekord W-60 USB-C Cable | Fast Charging Cable"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended: 50-60 characters. Leave empty to auto-generate.
-                  </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Meta Description
-                  </label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Meta Description</label>
                   <textarea
                     value={productData.meta_description}
                     onChange={(e) => setProductData({ ...productData, meta_description: e.target.value })}
                     rows={3}
                     className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none resize-none"
-                    placeholder="Premium 60W USB-C cable with braided design. Fast charging and data transfer. Available in multiple colors and lengths."
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended: 150-160 characters. Leave empty to auto-generate.
-                  </p>
                 </div>
               </div>
             </div>
@@ -594,12 +610,17 @@ export default function NewProductPage() {
               </select>
             </div>
 
-            {/* Main Product Image */}
+            {/* Main Image */}
             <div className="bg-white rounded-xl border border-border p-6">
-              <h2 className="text-lg font-bold text-foreground mb-4">Main Image *</h2>
-              {imagePreviews.main ? (
+              <h2 className="text-lg font-bold text-foreground mb-4">Main Image</h2>
+              {(imagePreviews.main || existingImages.main) ? (
                 <div className="relative aspect-square rounded-lg overflow-hidden bg-neutral-100">
-                  <Image src={imagePreviews.main} alt="Main product" fill className="object-cover" />
+                  <Image 
+                    src={imagePreviews.main || existingImages.main} 
+                    alt="Main product" 
+                    fill 
+                    className="object-cover" 
+                  />
                   <button
                     type="button"
                     onClick={removeMainImage}
@@ -611,12 +632,7 @@ export default function NewProductPage() {
               ) : (
                 <label className="block border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-foreground transition-colors cursor-pointer">
                   <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Click to upload main image
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    PNG, JPG up to 10MB
-                  </p>
+                  <p className="text-sm text-muted-foreground">Click to upload</p>
                   <input
                     type="file"
                     accept="image/*"
@@ -630,13 +646,17 @@ export default function NewProductPage() {
             {/* Additional Images */}
             <div className="bg-white rounded-xl border border-border p-6">
               <h2 className="text-lg font-bold text-foreground mb-4">Additional Images</h2>
-              <p className="text-sm text-muted-foreground mb-4">Upload up to 4 additional images</p>
               <div className="grid grid-cols-2 gap-3">
                 {[0, 1, 2, 3].map((index) => (
                   <div key={index}>
-                    {imagePreviews.additional[index] ? (
+                    {(imagePreviews.additional[index] || existingImages.additional[index]) ? (
                       <div className="relative aspect-square rounded-lg overflow-hidden bg-neutral-100">
-                        <Image src={imagePreviews.additional[index]!} alt={`Additional ${index + 1}`} fill className="object-cover" />
+                        <Image 
+                          src={imagePreviews.additional[index] || existingImages.additional[index] || ''} 
+                          alt={`Additional ${index + 1}`} 
+                          fill 
+                          className="object-cover" 
+                        />
                         <button
                           type="button"
                           onClick={() => removeAdditionalImage(index)}
@@ -648,9 +668,7 @@ export default function NewProductPage() {
                     ) : (
                       <label className="block aspect-square border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-foreground transition-colors cursor-pointer flex flex-col items-center justify-center">
                         <Upload className="w-5 h-5 text-muted-foreground mb-1" />
-                        <p className="text-xs text-muted-foreground">
-                          Image {index + 1}
-                        </p>
+                        <p className="text-xs text-muted-foreground">Image {index + 1}</p>
                         <input
                           type="file"
                           accept="image/*"

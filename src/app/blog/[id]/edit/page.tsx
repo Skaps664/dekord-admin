@@ -1,16 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { use, useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Upload, X, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
-import { createBlogPost } from "@/lib/services/blog"
+import { getBlogPost, updateBlogPost } from "@/lib/services/blog"
+import { BlogPost } from "@/lib/types/database"
 
-export default function NewBlogPostPage() {
+export default function EditBlogPostPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
   
   const [postData, setPostData] = useState({
     title: "",
@@ -25,10 +28,51 @@ export default function NewBlogPostPage() {
     featured: false
   })
 
+  const [currentFeaturedImage, setCurrentFeaturedImage] = useState<string | null>(null)
   const [featuredImage, setFeaturedImage] = useState<File | null>(null)
   const [featuredImagePreview, setFeaturedImagePreview] = useState<string | null>(null)
+  
+  const [currentOgImage, setCurrentOgImage] = useState<string | null>(null)
   const [ogImage, setOgImage] = useState<File | null>(null)
   const [ogImagePreview, setOgImagePreview] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadBlogPost()
+  }, [])
+
+  const loadBlogPost = async () => {
+    try {
+      const { data, error } = await getBlogPost(resolvedParams.id)
+      
+      if (error || !data) {
+        alert('Failed to load blog post')
+        router.push('/blog')
+        return
+      }
+
+      setPostData({
+        title: data.title,
+        slug: data.slug,
+        excerpt: data.excerpt || "",
+        content: data.content,
+        author_name: data.author_name || "dekord Team",
+        category: data.category || "",
+        status: data.status,
+        meta_title: data.meta_title || "",
+        meta_description: data.meta_description || "",
+        featured: data.featured || false
+      })
+
+      setCurrentFeaturedImage(data.featured_image)
+      setCurrentOgImage(data.og_image)
+    } catch (error) {
+      console.error('Error loading blog post:', error)
+      alert('An error occurred while loading the blog post')
+      router.push('/blog')
+    } finally {
+      setFetching(false)
+    }
+  }
 
   const handleFeaturedImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -57,11 +101,13 @@ export default function NewBlogPostPage() {
   const removeFeaturedImage = () => {
     setFeaturedImage(null)
     setFeaturedImagePreview(null)
+    setCurrentFeaturedImage(null)
   }
 
   const removeOgImage = () => {
     setOgImage(null)
     setOgImagePreview(null)
+    setCurrentOgImage(null)
   }
 
   const uploadImage = async (file: File, folder: string = 'blog'): Promise<string | null> => {
@@ -109,30 +155,32 @@ export default function NewBlogPostPage() {
     setLoading(true)
 
     try {
-      // Upload featured image
-      let featuredImageUrl = null
+      // Upload new featured image if changed
+      let featuredImageUrl = currentFeaturedImage
       if (featuredImage) {
-        featuredImageUrl = await uploadImage(featuredImage, 'blog-featured')
-        if (!featuredImageUrl) {
+        const uploadedUrl = await uploadImage(featuredImage, 'blog-featured')
+        if (!uploadedUrl) {
           alert('Failed to upload featured image')
           setLoading(false)
           return
         }
+        featuredImageUrl = uploadedUrl
       }
 
-      // Upload OG image
-      let ogImageUrl = null
+      // Upload new OG image if changed
+      let ogImageUrl = currentOgImage
       if (ogImage) {
-        ogImageUrl = await uploadImage(ogImage, 'blog-og')
-        if (!ogImageUrl) {
+        const uploadedUrl = await uploadImage(ogImage, 'blog-og')
+        if (!uploadedUrl) {
           alert('Failed to upload OG image')
           setLoading(false)
           return
         }
+        ogImageUrl = uploadedUrl
       }
 
-      // Create blog post
-      const { error } = await createBlogPost({
+      // Update blog post
+      const { error } = await updateBlogPost(resolvedParams.id, {
         title: postData.title,
         slug: postData.slug,
         excerpt: postData.excerpt || null,
@@ -146,26 +194,31 @@ export default function NewBlogPostPage() {
         meta_description: postData.meta_description || null,
         og_image: ogImageUrl,
         featured: postData.featured,
-        view_count: 0,
-        like_count: 0,
-        sort_order: 0,
         published_at: postData.status === 'published' ? new Date().toISOString() : null
       })
 
       if (error) {
-        alert(`Failed to create blog post: ${error}`)
+        alert(`Failed to update blog post: ${error}`)
         setLoading(false)
         return
       }
 
-      alert('Blog post created successfully!')
+      alert('Blog post updated successfully!')
       router.push('/blog')
     } catch (error) {
-      console.error('Error creating blog post:', error)
-      alert('An error occurred while creating the blog post')
+      console.error('Error updating blog post:', error)
+      alert('An error occurred while updating the blog post')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (fetching) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-neutral-900" />
+      </div>
+    )
   }
 
   return (
@@ -178,7 +231,7 @@ export default function NewBlogPostPage() {
               <Link href="/blog" className="text-neutral-600 hover:text-neutral-900 transition-colors">
                 <ArrowLeft className="w-6 h-6" />
               </Link>
-              <h1 className="text-2xl font-bold text-neutral-900">New Blog Post</h1>
+              <h1 className="text-2xl font-bold text-neutral-900">Edit Blog Post</h1>
             </div>
             <button 
               onClick={handleSubmit}
@@ -193,7 +246,7 @@ export default function NewBlogPostPage() {
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Save Post
+                  Update Post
                 </>
               )}
             </button>
@@ -371,9 +424,14 @@ export default function NewBlogPostPage() {
             {/* Featured Image */}
             <div className="bg-white rounded-xl border border-neutral-200 p-6">
               <h2 className="text-lg font-bold text-neutral-900 mb-4">Featured Image</h2>
-              {featuredImagePreview ? (
+              {featuredImagePreview || currentFeaturedImage ? (
                 <div className="relative aspect-video rounded-lg overflow-hidden bg-neutral-100">
-                  <Image src={featuredImagePreview} alt="Featured" fill className="object-cover" />
+                  <Image 
+                    src={featuredImagePreview || currentFeaturedImage || ''} 
+                    alt="Featured" 
+                    fill 
+                    className="object-cover" 
+                  />
                   <button
                     type="button"
                     onClick={removeFeaturedImage}
@@ -405,9 +463,14 @@ export default function NewBlogPostPage() {
             <div className="bg-white rounded-xl border border-neutral-200 p-6">
               <h2 className="text-lg font-bold text-neutral-900 mb-4">Social Share Image</h2>
               <p className="text-xs text-neutral-500 mb-3">Optional: Custom image for social media shares</p>
-              {ogImagePreview ? (
+              {ogImagePreview || currentOgImage ? (
                 <div className="relative aspect-video rounded-lg overflow-hidden bg-neutral-100">
-                  <Image src={ogImagePreview} alt="OG Image" fill className="object-cover" />
+                  <Image 
+                    src={ogImagePreview || currentOgImage || ''} 
+                    alt="OG Image" 
+                    fill 
+                    className="object-cover" 
+                  />
                   <button
                     type="button"
                     onClick={removeOgImage}
