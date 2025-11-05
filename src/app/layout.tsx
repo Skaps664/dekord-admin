@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import AuthCheck from "@/components/auth-check";
+import { AuthCheck } from "@/components/auth-check";
 import Sidebar from "@/components/sidebar";
 
 export const metadata: Metadata = {
   title: "dekord Admin Panel",
   description: "Manage your dekord e-commerce store",
+  icons: {
+    icon: '/favi.png',
+    shortcut: '/favi.png',
+    apple: '/favi.png',
+  },
 };
 
 export default function RootLayout({

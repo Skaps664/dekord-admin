@@ -1,24 +1,26 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+const SESSION_TOKEN = 'dekord_admin_secure_session_2025'
+
 export function middleware(request: NextRequest) {
   // Get the pathname
   const path = request.nextUrl.pathname
 
-  // Define public paths that don't require authentication
-  const isPublicPath = path === '/login'
-
-  // Get authentication status from cookie or header
-  // For now, we'll check localStorage in the client side
-  // In production, use proper JWT tokens in httpOnly cookies
-  
-  // If user is on login page and authenticated, redirect to dashboard
-  if (isPublicPath) {
+  // Allow login page without authentication
+  if (path === '/login') {
     return NextResponse.next()
   }
 
-  // For all other pages, check authentication on client side
-  // The actual auth check will happen in the layout component
+  // Check for session cookie
+  const session = request.cookies.get('admin_session')
+
+  // If no session or invalid token, redirect to login
+  if (!session || session.value !== SESSION_TOKEN) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Valid session - allow access
   return NextResponse.next()
 }
 
@@ -29,8 +31,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
+     * - api/auth/* (authentication API routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/auth).*)',
   ],
 }

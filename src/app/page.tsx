@@ -120,9 +120,12 @@ export default function AdminDashboard() {
       <header className="bg-white border-b border-neutral-200 sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-neutral-900">Dashboard</h1>
-              <p className="text-sm text-neutral-600">Welcome back to dekord admin</p>
+            <div className="flex items-center gap-4">
+              
+              <div>
+                <h1 className="text-2xl font-bold text-neutral-900">Dashboard</h1>
+                <p className="text-sm text-neutral-600">Welcome back to dekord admin</p>
+              </div>
             </div>
           </div>
         </div>

@@ -4,62 +4,69 @@ import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { motion } from "framer-motion"
 import { Shield } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
-export default function AuthCheck({ children }: { children: React.ReactNode }) {
+export function AuthCheck({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [isChecking, setIsChecking] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
-    // Check if we're on the login page
-    if (pathname === "/login") {
-      setIsChecking(false)
-      setIsAuthenticated(true)
-      return
-    }
-
-    // Check authentication status
-    const checkAuth = () => {
-      // TODO: Replace with real authentication check using Supabase
-      const isAuth = localStorage.getItem("admin_authenticated") === "true"
-      
-      if (!isAuth) {
-        router.push("/login")
-      } else {
-        setIsAuthenticated(true)
+    const checkAuth = async () => {
+      // Don't check auth on login page
+      if (pathname === '/login') {
+        setIsChecking(false)
+        return
       }
-      setIsChecking(false)
+
+      try {
+        // Check authentication via API (validates HTTP-only cookie)
+        const response = await fetch('/api/auth/check', {
+          method: 'GET',
+          credentials: 'include', // Include cookies in request
+        })
+
+        const data = await response.json()
+
+        if (!data.authenticated) {
+          router.push('/login')
+        } else {
+          setIsAuthenticated(true)
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        router.push('/login')
+      } finally {
+        setIsChecking(false)
+      }
     }
 
     checkAuth()
-  }, [router, pathname])
+  }, [pathname, router])
 
+  // Show loading spinner while checking authentication
   if (isChecking) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-neutral-100 via-white to-neutral-50 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-4 border-neutral-900 border-t-transparent rounded-full mx-auto mb-4"
-          />
-          <div className="flex items-center gap-2 text-neutral-900">
-            <Shield className="w-5 h-5" />
-            <p className="text-lg font-medium">Verifying authentication...</p>
-          </div>
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center bg-neutral-950">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-neutral-400 mx-auto mb-4" />
+          <p className="text-neutral-400">Verifying authentication...</p>
+        </div>
       </div>
     )
   }
 
-  if (!isAuthenticated && pathname !== "/login") {
-    return null
+  // Show login page without authentication check
+  if (pathname === '/login') {
+    return <>{children}</>
   }
 
-  return <>{children}</>
+  // Show content only if authenticated
+  if (isAuthenticated) {
+    return <>{children}</>
+  }
+
+  // Return null while redirecting to login
+  return null
 }
