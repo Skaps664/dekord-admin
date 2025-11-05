@@ -34,6 +34,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [saving, setSaving] = useState(false)
   const [order, setOrder] = useState<OrderWithDetails | null>(null)
   const [adminNotes, setAdminNotes] = useState("")
+  const [courier, setCourier] = useState("")
   const [trackingNumber, setTrackingNumber] = useState("")
   const [trackingUrl, setTrackingUrl] = useState("")
 
@@ -57,6 +58,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
     setOrder(data)
     setAdminNotes(data.admin_notes || "")
+    setCourier(data.courier || "")
     setTrackingNumber(data.tracking_number || "")
     setTrackingUrl(data.tracking_url || "")
     setLoading(false)
@@ -69,13 +71,38 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     const { error } = await updateOrderStatus(
       order.id, 
       newStatus,
-      { tracking_number: trackingNumber, tracking_url: trackingUrl }
+      { courier, tracking_number: trackingNumber, tracking_url: trackingUrl }
     )
 
     if (error) {
       alert(`Failed to update status: ${error}`)
     } else {
       alert('Order status updated successfully!')
+      loadOrder()
+    }
+    setSaving(false)
+  }
+
+  const handleTrackingUpdate = async () => {
+    if (!order) return
+
+    // Validate required fields
+    if (!courier || !trackingNumber || !trackingUrl) {
+      alert('Please fill in all tracking fields (Courier, Tracking Number, and URL)')
+      return
+    }
+
+    setSaving(true)
+    const { error } = await updateOrderStatus(
+      order.id,
+      order.status, // Keep current status
+      { courier, tracking_number: trackingNumber, tracking_url: trackingUrl }
+    )
+
+    if (error) {
+      alert(`Failed to update tracking info: ${error}`)
+    } else {
+      alert('Tracking information updated successfully!')
       loadOrder()
     }
     setSaving(false)
@@ -291,19 +318,34 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-neutral-900 mb-1">
-                    Tracking Number
+                    Courier Service <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={courier}
+                    onChange={(e) => setCourier(e.target.value)}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:border-transparent outline-none"
+                  >
+                    <option value="">Select Courier</option>
+                    <option value="Trax">Trax</option>
+                    <option value="Postex">Postex</option>
+                    <option value="Leopards">Leopards</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-900 mb-1">
+                    Tracking Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={trackingNumber}
                     onChange={(e) => setTrackingNumber(e.target.value)}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:border-transparent outline-none"
-                    placeholder="TCS123456"
+                    placeholder="Enter tracking number"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-900 mb-1">
-                    Tracking URL
+                    Tracking URL <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="url"
@@ -313,6 +355,23 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     placeholder="https://..."
                   />
                 </div>
+                <button
+                  onClick={handleTrackingUpdate}
+                  disabled={saving}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save Tracking Info
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 

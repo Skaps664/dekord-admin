@@ -25,6 +25,10 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
   const [existingImage, setExistingImage] = useState<string | null>(null)
   const [newImage, setNewImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  
+  const [existingBannerImage, setExistingBannerImage] = useState<string | null>(null)
+  const [newBannerImage, setNewBannerImage] = useState<File | null>(null)
+  const [bannerImagePreview, setBannerImagePreview] = useState<string | null>(null)
 
   useEffect(() => {
     loadCollection()
@@ -50,6 +54,9 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
       if (data.image) {
         setExistingImage(data.image)
       }
+      if (data.banner_image) {
+        setExistingBannerImage(data.banner_image)
+      }
     } catch (error) {
       console.error('Error loading collection:', error)
       alert('Failed to load collection')
@@ -70,6 +77,18 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
     }
   }
 
+  const handleBannerImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setNewBannerImage(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setBannerImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const removeNewImage = () => {
     setNewImage(null)
     setImagePreview(null)
@@ -77,6 +96,15 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
 
   const removeExistingImage = () => {
     setExistingImage(null)
+  }
+
+  const removeNewBannerImage = () => {
+    setNewBannerImage(null)
+    setBannerImagePreview(null)
+  }
+
+  const removeExistingBannerImage = () => {
+    setExistingBannerImage(null)
   }
 
   const uploadImage = async (file: File): Promise<string | null> => {
@@ -123,11 +151,25 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
       if (newImage) {
         const uploadedUrl = await uploadImage(newImage)
         if (!uploadedUrl) {
-          alert('Failed to upload new image')
+          alert('Failed to upload new cover image')
           setSaving(false)
           return
         }
         finalImageUrl = uploadedUrl
+      }
+
+      // Determine final banner image URL
+      let finalBannerImageUrl: string | null = existingBannerImage
+
+      // Upload new banner image if provided
+      if (newBannerImage) {
+        const uploadedUrl = await uploadImage(newBannerImage)
+        if (!uploadedUrl) {
+          alert('Failed to upload new banner image')
+          setSaving(false)
+          return
+        }
+        finalBannerImageUrl = uploadedUrl
       }
 
       // Generate slug from name
@@ -142,6 +184,7 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
         slug: slug,
         description: collectionData.description || null,
         image: finalImageUrl,
+        banner_image: finalBannerImageUrl,
         status: collectionData.status,
         meta_title: collectionData.meta_title || null,
         meta_description: collectionData.meta_description || null
@@ -298,7 +341,8 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
 
             {/* Collection Image */}
             <div className="bg-white rounded-xl border border-neutral-200 p-6">
-              <h2 className="text-lg font-bold text-neutral-900 mb-4">Collection Image</h2>
+              <h2 className="text-lg font-bold text-neutral-900 mb-4">Cover Image</h2>
+              <p className="text-sm text-neutral-600 mb-4">Small square image for collection cards</p>
               
               {/* Existing Image */}
               {existingImage && !imagePreview && (
@@ -345,6 +389,62 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
                     type="file"
                     accept="image/*"
                     onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Banner Image */}
+            <div className="bg-white rounded-xl border border-neutral-200 p-6">
+              <h2 className="text-lg font-bold text-neutral-900 mb-4">Hero Banner Image</h2>
+              <p className="text-sm text-neutral-600 mb-4">Wide banner for collection page hero section (Recommended: 1920x600px)</p>
+              
+              {/* Existing Banner Image */}
+              {existingBannerImage && !bannerImagePreview && (
+                <div className="mb-4">
+                  <p className="text-xs text-neutral-500 mb-2">Current Banner</p>
+                  <div className="relative aspect-[16/5] rounded-lg overflow-hidden bg-neutral-100">
+                    <Image src={existingBannerImage} alt="Current banner" fill className="object-cover" />
+                    <button
+                      type="button"
+                      onClick={removeExistingBannerImage}
+                      className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* New Banner Image Preview */}
+              {bannerImagePreview ? (
+                <div>
+                  <p className="text-xs text-neutral-500 mb-2">New Banner</p>
+                  <div className="relative aspect-[16/5] rounded-lg overflow-hidden bg-neutral-100">
+                    <Image src={bannerImagePreview} alt="New banner" fill className="object-cover" />
+                    <button
+                      type="button"
+                      onClick={removeNewBannerImage}
+                      className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="block border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center hover:border-neutral-900 transition-colors cursor-pointer">
+                  <Upload className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+                  <p className="text-sm text-neutral-600 mb-1">
+                    {existingBannerImage ? 'Replace banner' : 'Click to upload banner'}
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    PNG, JPG up to 10MB (Wide format)
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBannerImageChange}
                     className="hidden"
                   />
                 </label>

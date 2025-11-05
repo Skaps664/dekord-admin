@@ -28,6 +28,8 @@ export default function NewCollectionPage() {
 
   const [image, setImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [bannerImage, setBannerImage] = useState<File | null>(null)
+  const [bannerImagePreview, setBannerImagePreview] = useState<string | null>(null)
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -41,9 +43,26 @@ export default function NewCollectionPage() {
     }
   }
 
+  const handleBannerImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setBannerImage(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setBannerImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const removeImage = () => {
     setImage(null)
     setImagePreview(null)
+  }
+
+  const removeBannerImage = () => {
+    setBannerImage(null)
+    setBannerImagePreview(null)
   }
 
   const uploadImage = async (file: File): Promise<string | null> => {
@@ -88,7 +107,18 @@ export default function NewCollectionPage() {
       if (image) {
         imageUrl = await uploadImage(image)
         if (!imageUrl) {
-          alert('Failed to upload image')
+          alert('Failed to upload cover image')
+          setLoading(false)
+          return
+        }
+      }
+
+      // Upload banner image if provided
+      let bannerImageUrl = null
+      if (bannerImage) {
+        bannerImageUrl = await uploadImage(bannerImage)
+        if (!bannerImageUrl) {
+          alert('Failed to upload banner image')
           setLoading(false)
           return
         }
@@ -106,6 +136,7 @@ export default function NewCollectionPage() {
         slug: slug,
         description: collectionData.description || null,
         image: imageUrl,
+        banner_image: bannerImageUrl,
         status: collectionData.status,
         sort_order: 0,
         meta_title: collectionData.meta_title || null,
@@ -252,7 +283,8 @@ export default function NewCollectionPage() {
 
             {/* Collection Image */}
             <div className="bg-white rounded-xl border border-neutral-200 p-6">
-              <h2 className="text-lg font-bold text-neutral-900 mb-4">Collection Image</h2>
+              <h2 className="text-lg font-bold text-neutral-900 mb-4">Cover Image</h2>
+              <p className="text-sm text-neutral-600 mb-4">Small square image for collection cards</p>
               {imagePreview ? (
                 <div className="relative aspect-video rounded-lg overflow-hidden bg-neutral-100">
                   <Image src={imagePreview} alt="Collection" fill className="object-cover" />
@@ -277,6 +309,40 @@ export default function NewCollectionPage() {
                     type="file"
                     accept="image/*"
                     onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Banner Image */}
+            <div className="bg-white rounded-xl border border-neutral-200 p-6">
+              <h2 className="text-lg font-bold text-neutral-900 mb-4">Hero Banner Image</h2>
+              <p className="text-sm text-neutral-600 mb-4">Wide banner for collection page hero section (Recommended: 1920x600px)</p>
+              {bannerImagePreview ? (
+                <div className="relative aspect-[16/5] rounded-lg overflow-hidden bg-neutral-100">
+                  <Image src={bannerImagePreview} alt="Banner" fill className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={removeBannerImage}
+                    className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="block border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center hover:border-neutral-900 transition-colors cursor-pointer">
+                  <Upload className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+                  <p className="text-sm text-neutral-600 mb-1">
+                    Click to upload banner
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    PNG, JPG up to 10MB (Wide format)
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBannerImageChange}
                     className="hidden"
                   />
                 </label>

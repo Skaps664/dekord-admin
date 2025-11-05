@@ -72,7 +72,7 @@ export async function getOrder(id: string) {
 export async function updateOrderStatus(
   orderId: string, 
   status: string,
-  trackingInfo?: { tracking_number?: string; tracking_url?: string }
+  trackingInfo?: { courier?: string; tracking_number?: string; tracking_url?: string }
 ) {
   try {
     const updateData: any = {
@@ -88,6 +88,9 @@ export async function updateOrderStatus(
     }
 
     // Add tracking info if provided
+    if (trackingInfo?.courier) {
+      updateData.courier = trackingInfo.courier
+    }
     if (trackingInfo?.tracking_number) {
       updateData.tracking_number = trackingInfo.tracking_number
     }
