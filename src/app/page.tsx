@@ -68,14 +68,14 @@ export default function AdminDashboard() {
 
       if (orders) {
         // Calculate total revenue
-        const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
+        const totalRevenue = orders.reduce((sum, order) => sum + (order.total || 0), 0)
         
         // Get recent orders (last 5)
         const recent = orders.slice(0, 5).map(order => ({
           id: order.id,
           order_number: order.order_number,
           customer: order.shipping_name || 'Unknown',
-          amount: order.total_amount || 0,
+          amount: order.total || 0,
           status: order.status || 'pending',
           date: new Date(order.created_at).toLocaleDateString('en-US', { 
             month: 'short', 
