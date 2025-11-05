@@ -194,6 +194,19 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     <span className="text-green-600">- Rs. {Number(order.discount_amount).toLocaleString()}</span>
                   </div>
                 )}
+                {order.coupon_code && (
+                  <div className="flex items-center justify-between text-sm bg-green-50 -mx-2 px-2 py-2 rounded">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-700 font-medium">Coupon Applied</span>
+                      <span className="bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold">
+                        {order.coupon_code}
+                      </span>
+                    </div>
+                    <span className="text-green-700 font-semibold">
+                      - Rs. {Number(order.discount_amount).toLocaleString()}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-lg font-bold pt-2 border-t border-neutral-200">
                   <span>Total</span>
                   <span>Rs. {Number(order.total).toLocaleString()}</span>

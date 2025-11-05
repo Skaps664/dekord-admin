@@ -69,6 +69,7 @@ export interface Order {
   tracking_url: string | null
   customer_notes: string | null
   admin_notes: string | null
+  coupon_code: string | null
   created_at: string
   updated_at: string
   shipped_at: string | null
