@@ -321,7 +321,8 @@ export default function EditProductPage() {
             stock: variant.stock,
             price_override: variant.price_override || null,
             variant_image: null,
-            is_available: true
+            is_available: true,
+            is_default: false
           })
         }
       }

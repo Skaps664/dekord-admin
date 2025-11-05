@@ -243,9 +243,9 @@ export default function AdminDashboard() {
                           #{index + 1}
                         </div>
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
-                          {product.images && product.images.length > 0 ? (
+                          {product.main_image ? (
                             <Image
-                              src={product.images[0]}
+                              src={product.main_image}
                               alt={product.name}
                               width={64}
                               height={64}
@@ -269,7 +269,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-neutral-900">
-                            {formatCurrency(product.base_price || 0)}
+                            {formatCurrency(product.price || 0)}
                           </p>
                           {product.variants && product.variants.length > 0 && (
                             <p className="text-xs text-neutral-500">{product.variants.length} variants</p>

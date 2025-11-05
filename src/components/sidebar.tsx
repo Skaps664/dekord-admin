@@ -82,6 +82,7 @@ export default function Sidebar() {
       </button>
 
       {/* Mobile Overlay */}
+      {/* @ts-ignore - Framer Motion type compatibility with React 19 */}
       <AnimatePresence>
         {isMobileOpen && (
           <motion.div

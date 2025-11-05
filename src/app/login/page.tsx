@@ -70,6 +70,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-100 via-white to-neutral-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
+        {/* @ts-ignore - Framer Motion type compatibility with React 19 */}
         <AnimatePresence mode="wait">
           {step === "login" ? (
             <motion.div
