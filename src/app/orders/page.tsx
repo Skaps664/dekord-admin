@@ -14,7 +14,10 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Loader2
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  MessageCircle
 } from "lucide-react"
 import { getOrders, updateOrderStatus } from "@/lib/services/orders"
 import { OrderWithDetails } from "@/lib/types/database"
@@ -148,7 +151,25 @@ export default function OrdersPage() {
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
                     <div className="flex items-center gap-4">
                       <div>
-                        <h3 className="text-lg font-bold text-foreground">{order.order_number}</h3>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="text-lg font-bold text-foreground">{order.order_number}</h3>
+                          {order.customer_confirmed ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Confirmed
+                            </span>
+                          ) : order.confirmation_query ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs font-semibold rounded-full">
+                              <MessageCircle className="w-3 h-3" />
+                              Query
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
+                              <AlertCircle className="w-3 h-3" />
+                              Not Yet
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {new Date(order.created_at).toLocaleString('en-US', {
                             month: 'short',
@@ -184,6 +205,12 @@ export default function OrdersPage() {
                         <p className="text-xs text-muted-foreground mt-1">
                           <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">Registered User</span>
                         </p>
+                      )}
+                      {order.confirmation_query && (
+                        <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
+                          <p className="font-semibold text-orange-900 mb-1">Customer Query:</p>
+                          <p className="text-orange-800 line-clamp-2">{order.confirmation_query}</p>
+                        </div>
                       )}
                     </div>
 

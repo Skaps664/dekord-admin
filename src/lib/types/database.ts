@@ -72,6 +72,8 @@ export interface Order {
   customer_notes: string | null
   admin_notes: string | null
   coupon_code: string | null
+  customer_confirmed: boolean
+  confirmation_query: string | null
   created_at: string
   updated_at: string
   shipped_at: string | null
@@ -146,6 +148,39 @@ export interface ProductWithVariants extends Product {
 export interface OrderWithDetails extends Order {
   order_items: OrderItem[]
   user?: User | null
+}
+
+export interface Review {
+  id: string
+  product_id: string
+  order_id: string
+  user_id: string
+  rating: number
+  title: string | null
+  comment: string
+  images: string[] | null
+  verified_purchase: boolean
+  helpful_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ReviewWithDetails extends Review {
+  product?: Product | null
+  user?: User | null
+  user_profile?: UserProfile | null
+}
+
+export interface EmailSubscription {
+  id: string
+  email: string
+  subscribed_at: string
+  is_active: boolean
+  source: string
+  user_id: string | null
+  unsubscribed_at: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface UserWithProfile extends User {

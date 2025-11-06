@@ -14,7 +14,9 @@ import {
   Truck,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  CheckCircle2,
+  MessageCircle
 } from "lucide-react"
 import { getOrder, updateOrderStatus, updateOrderNotes } from "@/lib/services/orders"
 import { OrderWithDetails } from "@/lib/types/database"
@@ -382,6 +384,38 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 Payment
               </h2>
               <p className="text-base text-neutral-900">{order.payment_method.toUpperCase()}</p>
+            </div>
+
+            {/* Customer Confirmation */}
+            <div className="bg-white rounded-xl border border-neutral-200 p-6">
+              <h2 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+                <MessageCircle className="w-5 h-5" />
+                Customer Confirmation
+              </h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-neutral-600">Status</label>
+                  {order.customer_confirmed ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <span className="text-base font-semibold text-green-600">Confirmed via WhatsApp</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Clock className="w-5 h-5 text-yellow-600" />
+                      <span className="text-base font-semibold text-yellow-600">Awaiting Confirmation</span>
+                    </div>
+                  )}
+                </div>
+                {order.confirmation_query && (
+                  <div>
+                    <label className="text-sm font-medium text-neutral-600">Customer Query</label>
+                    <div className="mt-1 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-neutral-900">{order.confirmation_query}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Admin Notes */}

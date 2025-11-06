@@ -21,7 +21,9 @@ import {
   X,
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Star,
+  MailOpen
 } from "lucide-react"
 
 type NavItem = {
@@ -35,9 +37,11 @@ const navigation: NavItem[] = [
   { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Products", href: "/products", icon: Package },
   { name: "Collections", href: "/collections", icon: Grid3x3 },
+  { name: "Reviews", href: "/reviews", icon: Star },
   { name: "Blog", href: "/blog", icon: FileText },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Users", href: "/users", icon: Users },  
+  { name: "Subscriptions", href: "/subscriptions", icon: MailOpen },
   { name: "Discounts", href: "/discounts", icon: Tag },
   { name: "Email Marketing", href: "/emails", icon: Mail },
 

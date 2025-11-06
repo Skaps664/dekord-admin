@@ -108,6 +108,28 @@ export async function updateOrderStatus(
       return { error: error.message }
     }
 
+    // Send notifications
+    const notificationType = status.toLowerCase()
+    if (['processing', 'shipped', 'delivered'].includes(notificationType)) {
+      // Call notification APIs
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/send-order-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: notificationType, orderId })
+        })
+        
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/send-whatsapp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: notificationType, orderId })
+        })
+      } catch (notifError) {
+        console.error('Notification error:', notifError)
+        // Don't fail the update if notifications fail
+      }
+    }
+
     return { error: null }
   } catch (error) {
     console.error('Error updating order status:', error)
