@@ -113,13 +113,15 @@ export async function updateOrderStatus(
     if (['processing', 'shipped', 'delivered'].includes(notificationType)) {
       // Call notification APIs
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/send-order-email`, {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://dekord.online'
+        
+        await fetch(`${siteUrl}/api/send-order-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: notificationType, orderId })
         })
         
-        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/send-whatsapp`, {
+        await fetch(`${siteUrl}/api/send-whatsapp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: notificationType, orderId })
