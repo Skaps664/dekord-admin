@@ -6,7 +6,7 @@ import { Eye, EyeOff, Mail, Lock, Shield, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 const ADMIN_CREDENTIALS = {
-  email: "sudais.biz.ideas@gmail.com",
+  email: "sudais@dekord.online",
   password: "YOutuber123!@#",
   twoFA: "456456"
 }
