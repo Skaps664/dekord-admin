@@ -188,3 +188,35 @@ export interface UserWithProfile extends User {
   order_count?: number
   total_spent?: number
 }
+
+export interface Merch {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  price: number
+  sku: string | null
+  status: string
+  quantity_available: number
+  meta_title: string | null
+  meta_description: string | null
+  image_1: string | null
+  image_2: string | null
+  image_3: string | null
+  image_4: string | null
+  image_5: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MerchFeature {
+  id: string
+  merch_id: string
+  feature: string
+  sort_order: number
+  created_at: string
+}
+
+export interface MerchWithFeatures extends Merch {
+  features: MerchFeature[]
+}
