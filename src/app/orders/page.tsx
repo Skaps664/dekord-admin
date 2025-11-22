@@ -73,7 +73,7 @@ export default function OrdersPage() {
     // Validate shipping details for shipped status
     if (newStatus === 'shipped') {
       const order = orders.find(o => o.id === orderId)
-      if (!order?.shipping_tracking_number || !order?.shipping_carrier) {
+      if (!order?.tracking_number || !order?.courier) {
         alert('Please add shipping tracking details before marking as shipped.')
         return
       }
@@ -131,8 +131,8 @@ export default function OrdersPage() {
         order.payment_method.toUpperCase(),
         order.status,
         new Date(order.created_at).toLocaleString(),
-        order.shipping_tracking_number || '',
-        order.shipping_carrier || '',
+        order.tracking_number || '',
+        order.courier || '',
         order.customer_confirmed ? 'Yes' : 'No',
         order.confirmation_query || ''
       ]
