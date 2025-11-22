@@ -100,7 +100,7 @@ export default function EditMerchPage() {
     setImages(newImages)
 
     const newPreviews = [...imagePreviews]
-    newPreviews[index] = existingImages[index] // Reset to existing image
+    newPreviews[index] = null // Set to null to show upload placeholder
     setImagePreviews(newPreviews)
   }
 

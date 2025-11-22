@@ -36,6 +36,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+  const [lastDataLoad, setLastDataLoad] = useState<string | null>(null)
 
   useEffect(() => {
     loadOrders()
@@ -53,11 +54,31 @@ export default function OrdersPage() {
       alert('Failed to load orders')
     } else if (data) {
       setOrders(data)
+      setLastDataLoad(new Date().toISOString())
     }
     setLoading(false)
   }
 
+  const checkForStockUpdates = () => {
+    if (typeof window === 'undefined') return
+    
+    const stockLastUpdated = localStorage.getItem('stockLastUpdated')
+    if (stockLastUpdated && (!lastDataLoad || new Date(stockLastUpdated) > new Date(lastDataLoad))) {
+      console.log('Stock updated, refreshing orders data...')
+      loadOrders()
+    }
+  }
+
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    // Validate shipping details for shipped status
+    if (newStatus === 'shipped') {
+      const order = orders.find(o => o.id === orderId)
+      if (!order?.shipping_tracking_number || !order?.shipping_carrier) {
+        alert('Please add shipping tracking details before marking as shipped.')
+        return
+      }
+    }
+
     setUpdatingOrderId(orderId)
     const { error } = await updateOrderStatus(orderId, newStatus)
     
@@ -70,6 +91,68 @@ export default function OrdersPage() {
     setUpdatingOrderId(null)
   }
 
+  const exportToCSV = (ordersToExport: OrderWithDetails[], status: string) => {
+    const headers = [
+      'Order Number',
+      'Customer Name',
+      'Phone',
+      'Email',
+      'Address',
+      'City',
+      'Province',
+      'Postal Code',
+      'Items',
+      'Total',
+      'Payment Method',
+      'Status',
+      'Created At',
+      'Tracking Number',
+      'Carrier',
+      'Customer Confirmed',
+      'Confirmation Query'
+    ]
+
+    const csvData = ordersToExport.map(order => {
+      const items = order.order_items?.map(item => 
+        `${item.quantity}x ${item.product_name}${item.variant_details ? ` (${item.variant_details})` : ''}`
+      ).join('; ') || ''
+
+      return [
+        order.order_number,
+        order.shipping_name,
+        order.shipping_phone,
+        order.user_email || '',
+        order.shipping_address,
+        order.shipping_city,
+        order.shipping_province,
+        order.shipping_postal_code || '',
+        items,
+        order.total,
+        order.payment_method.toUpperCase(),
+        order.status,
+        new Date(order.created_at).toLocaleString(),
+        order.shipping_tracking_number || '',
+        order.shipping_carrier || '',
+        order.customer_confirmed ? 'Yes' : 'No',
+        order.confirmation_query || ''
+      ]
+    })
+
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `orders_${status}_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
@@ -80,9 +163,12 @@ export default function OrdersPage() {
               <h1 className="text-2xl font-bold text-neutral-900">Orders</h1>
               <p className="text-sm text-neutral-600">Manage customer orders and fulfillment</p>
             </div>
-            <button className="inline-flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
+            <button 
+              onClick={() => exportToCSV(orders, 'all')}
+              className="inline-flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
+            >
               <Download className="w-4 h-4" />
-              Export
+              Export All Orders
             </button>
           </div>
         </div>
@@ -90,30 +176,95 @@ export default function OrdersPage() {
 
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters */}
-        <div className="bg-white rounded-xl border border-border p-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search by order number, customer name, or phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
-              />
+        <div className="bg-white rounded-xl border border-border p-6 mb-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search by order number, customer name, or phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
+                />
+              </div>
             </div>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
-            >
-              <option value="All">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+
+            {/* Status Filter Buttons */}
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => setSelectedStatus('All')}
+                className={`px-6 py-3 rounded-lg font-semibold text-lg transition-all ${
+                  selectedStatus === 'All'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                All Orders ({orders.length})
+              </button>
+              <button
+                onClick={() => setSelectedStatus('pending')}
+                className={`px-6 py-3 rounded-lg font-semibold text-lg transition-all ${
+                  selectedStatus === 'pending'
+                    ? 'bg-yellow-500 text-white shadow-lg'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Pending ({orders.filter(o => o.status === 'pending').length})
+              </button>
+              <button
+                onClick={() => setSelectedStatus('processing')}
+                className={`px-6 py-3 rounded-lg font-semibold text-lg transition-all ${
+                  selectedStatus === 'processing'
+                    ? 'bg-orange-500 text-white shadow-lg'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Processing ({orders.filter(o => o.status === 'processing').length})
+              </button>
+              <button
+                onClick={() => setSelectedStatus('shipped')}
+                className={`px-6 py-3 rounded-lg font-semibold text-lg transition-all ${
+                  selectedStatus === 'shipped'
+                    ? 'bg-green-500 text-white shadow-lg'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Shipped ({orders.filter(o => o.status === 'shipped').length})
+              </button>
+              <button
+                onClick={() => setSelectedStatus('delivered')}
+                className={`px-6 py-3 rounded-lg font-semibold text-lg transition-all ${
+                  selectedStatus === 'delivered'
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Delivered ({orders.filter(o => o.status === 'delivered').length})
+              </button>
+              <button
+                onClick={() => setSelectedStatus('cancelled')}
+                className={`px-6 py-3 rounded-lg font-semibold text-lg transition-all ${
+                  selectedStatus === 'cancelled'
+                    ? 'bg-red-500 text-white shadow-lg'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Cancelled ({orders.filter(o => o.status === 'cancelled').length})
+              </button>
+            </div>
+
+            {/* Export Button */}
+            {selectedStatus !== 'All' && (
+              <button
+                onClick={() => exportToCSV(orders, selectedStatus)}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors flex items-center gap-2 w-fit"
+              >
+                <Download className="w-5 h-5" />
+                Export {selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1)} Orders to CSV
+              </button>
+            )}
           </div>
         </div>
 
@@ -224,17 +375,24 @@ export default function OrdersPage() {
                       )}
                     </div>
 
-                    {/* Order Summary */}
+                    {/* Order Summary with Stock Info */}
                     <div>
                       <h4 className="text-sm font-semibold text-foreground mb-2">Order Summary</h4>
                       {order.order_items?.map((item) => (
-                        <p key={item.id} className="text-xs text-muted-foreground">
-                          {item.quantity}x {item.product_name}
-                          {item.variant_details && ` (${item.variant_details})`}
-                        </p>
+                        <div key={item.id} className="mb-2">
+                          <p className="text-xs text-muted-foreground">
+                            {item.quantity}x {item.product_name}
+                            {item.variant_details && ` (${item.variant_details})`}
+                          </p>
+                          {item.current_stock !== undefined && (
+                            <p className="text-xs text-blue-600 font-medium">
+                              Stock: {item.current_stock > 0 ? item.current_stock : 'Out of stock'}
+                            </p>
+                          )}
+                        </div>
                       ))}
                       <p className="text-sm font-bold text-foreground mt-2">
-                        Total: Rs. {Number(order.total).toLocaleString()}
+                        Total: Rs. {order.total}
                       </p>
                       <p className="text-xs text-muted-foreground">Payment: {order.payment_method.toUpperCase()}</p>
                     </div>

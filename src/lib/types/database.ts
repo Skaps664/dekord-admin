@@ -91,6 +91,7 @@ export interface OrderItem {
   unit_price: number
   quantity: number
   total_price: number
+  current_stock?: number // Current available stock for this item
   created_at: string
 }
 
