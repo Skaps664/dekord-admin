@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./tiptap.css";
 import { AuthCheck } from "@/components/auth-check";
 import Sidebar from "@/components/sidebar";
 

@@ -24,7 +24,8 @@ import {
   ChevronRight,
   Star,
   MailOpen,
-  Shirt
+  Shirt,
+  Shield
 } from "lucide-react"
 
 type NavItem = {
@@ -36,6 +37,7 @@ type NavItem = {
 const navigation: NavItem[] = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
+  { name: "Claims", href: "/claims", icon: Shield },
   { name: "Products", href: "/products", icon: Package },
   { name: "Merch", href: "/merch", icon: Shirt },
   { name: "Collections", href: "/collections", icon: Grid3x3 },

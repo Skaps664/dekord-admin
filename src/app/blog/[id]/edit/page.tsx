@@ -8,6 +8,7 @@ import { ArrowLeft, Save, Upload, X, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { getBlogPost, updateBlogPost } from "@/lib/services/blog"
 import { BlogPost } from "@/lib/types/database"
+import RichTextEditor from "@/components/rich-text-editor"
 
 export default function EditBlogPostPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -306,13 +307,10 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
                   <label className="block text-sm font-medium text-neutral-900 mb-2">
                     Content *
                   </label>
-                  <textarea
-                    value={postData.content}
-                    onChange={(e) => setPostData({ ...postData, content: e.target.value })}
-                    rows={15}
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:border-transparent outline-none resize-none font-mono text-sm"
-                    placeholder="Write your blog post content here (Markdown supported)..."
-                    required
+                  <RichTextEditor
+                    content={postData.content}
+                    onChange={(html) => setPostData({ ...postData, content: html })}
+                    placeholder="Write your blog post content here..."
                   />
                 </div>
               </div>

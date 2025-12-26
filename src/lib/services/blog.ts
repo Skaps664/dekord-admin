@@ -10,7 +10,7 @@ export async function getBlogPosts(filters?: GetBlogPostsFilters) {
   try {
     let query = supabase
       .from('blog_posts')
-      .select('*')
+      .select('id, title, slug, excerpt, status, category, tags, author_name, featured_image, featured_image_alt, published_at, read_time_minutes, view_count, created_at, updated_at')
       .order('created_at', { ascending: false })
 
     // Filter by status
@@ -18,9 +18,9 @@ export async function getBlogPosts(filters?: GetBlogPostsFilters) {
       query = query.eq('status', filters.status.toLowerCase())
     }
 
-    // Search by title, excerpt, or content
+    // Search by title or excerpt (not content to avoid timeout on large HTML)
     if (filters?.search) {
-      query = query.or(`title.ilike.%${filters.search}%,excerpt.ilike.%${filters.search}%,content.ilike.%${filters.search}%`)
+      query = query.or(`title.ilike.%${filters.search}%,excerpt.ilike.%${filters.search}%`)
     }
 
     const { data, error } = await query
@@ -83,22 +83,21 @@ export async function createBlogPost(postData: Partial<BlogPost>) {
 
 export async function updateBlogPost(id: string, postData: Partial<BlogPost>) {
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('blog_posts')
       .update({
         ...postData,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .select()
-      .single()
 
     if (error) {
       console.error('Error updating blog post:', error)
       return { data: null, error: error.message }
     }
 
-    return { data: data as BlogPost, error: null }
+    // Return success without fetching the updated post to avoid timeout
+    return { data: { id, ...postData } as BlogPost, error: null }
   } catch (error) {
     console.error('Error updating blog post:', error)
     return { data: null, error: 'Failed to update blog post' }
