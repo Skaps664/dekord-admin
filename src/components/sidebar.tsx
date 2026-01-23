@@ -25,7 +25,8 @@ import {
   Star,
   MailOpen,
   Shirt,
-  Shield
+  Shield,
+  Briefcase
 } from "lucide-react"
 
 type NavItem = {
@@ -43,6 +44,7 @@ const navigation: NavItem[] = [
   { name: "Collections", href: "/collections", icon: Grid3x3 },
   { name: "Reviews", href: "/reviews", icon: Star },
   { name: "Blog", href: "/blog", icon: FileText },
+  { name: "Openings", href: "/openings", icon: Briefcase },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Users", href: "/users", icon: Users },  
   { name: "Subscriptions", href: "/subscriptions", icon: MailOpen },

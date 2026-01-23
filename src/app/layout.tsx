@@ -3,6 +3,7 @@ import "./globals.css";
 import "./tiptap.css";
 import { AuthCheck } from "@/components/auth-check";
 import Sidebar from "@/components/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "dekord Admin Panel",
@@ -30,6 +31,7 @@ export default function RootLayout({
             </main>
           </div>
         </AuthCheck>
+        <Toaster />
       </body>
     </html>
   );

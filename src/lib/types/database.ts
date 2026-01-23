@@ -221,3 +221,40 @@ export interface MerchFeature {
 export interface MerchWithFeatures extends Merch {
   features: MerchFeature[]
 }
+
+export interface JobOpening {
+  id: string
+  title: string
+  department: string
+  location: string
+  type: 'full-time' | 'part-time' | 'contract' | 'internship'
+  description: string
+  requirements: string[]
+  responsibilities: string[]
+  salary_range: string | null
+  benefits: string[]
+  status: 'active' | 'inactive' | 'closed'
+  application_deadline: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface JobApplication {
+  id: string
+  job_id: string
+  full_name: string
+  email: string
+  phone: string
+  city: string
+  qualifications: string
+  short_about: string
+  resume_url: string | null
+  portfolio_url: string | null
+  website_url: string | null
+  why_consider: string
+  most_interesting_thing: string
+  fun_moment_story: string
+  status: 'pending' | 'reviewing' | 'accepted' | 'rejected'
+  applied_at: string
+  reviewed_at: string | null
+}
