@@ -8,6 +8,8 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
 import { createProduct, createVariant } from "@/lib/services/products"
+import { getProductTypes } from "@/lib/services/product-types"
+import type { ProductType } from "@/lib/types/database"
 
 interface Collection {
   id: string
@@ -27,6 +29,7 @@ export default function NewProductPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [collections, setCollections] = useState<Collection[]>([])
+  const [productTypes, setProductTypes] = useState<ProductType[]>([])
   
   const [productData, setProductData] = useState({
     name: "",
@@ -36,23 +39,28 @@ export default function NewProductPage() {
     price: "",
     status: "active",
     collection_id: "",
+    type_id: "",
     meta_title: "",
     meta_description: ""
   })
 
   const [images, setImages] = useState<{
     main: File | null
+    hero: File | null
     additional: (File | null)[]
   }>({
     main: null,
+    hero: null,
     additional: [null, null, null, null]
   })
 
   const [imagePreviews, setImagePreviews] = useState<{
     main: string | null
+    hero: string | null
     additional: (string | null)[]
   }>({
     main: null,
+    hero: null,
     additional: [null, null, null, null]
   })
 
@@ -60,9 +68,10 @@ export default function NewProductPage() {
     { length: "1m", color: "Black", sku: "", stock: 0, price_override: undefined }
   ])
 
-  // Load collections on mount
+  // Load collections and types on mount
   useEffect(() => {
     loadCollections()
+    loadProductTypes()
   }, [])
 
   const loadCollections = async () => {
@@ -77,6 +86,15 @@ export default function NewProductPage() {
       alert('Failed to load collections')
     } else if (data) {
       setCollections(data)
+    }
+  }
+
+  const loadProductTypes = async () => {
+    const { data, error } = await getProductTypes()
+    if (error) {
+      console.error('Error loading product types:', error)
+    } else if (data) {
+      setProductTypes(data)
     }
   }
 
@@ -109,9 +127,26 @@ export default function NewProductPage() {
     }
   }
 
+  const handleHeroImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setImages({ ...images, hero: file })
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreviews({ ...imagePreviews, hero: reader.result as string })
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const removeMainImage = () => {
     setImages({ ...images, main: null })
     setImagePreviews({ ...imagePreviews, main: null })
+  }
+
+  const removeHeroImage = () => {
+    setImages({ ...images, hero: null })
+    setImagePreviews({ ...imagePreviews, hero: null })
   }
 
   const removeAdditionalImage = (index: number) => {
@@ -196,6 +231,12 @@ export default function NewProductPage() {
         return
       }
 
+      // Upload hero image
+      let heroImageUrl: string | null = null
+      if (images.hero) {
+        heroImageUrl = await uploadImage(images.hero, 'hero')
+      }
+
       // Upload additional images
       const additionalImageUrls: (string | null)[] = []
       for (let i = 0; i < images.additional.length; i++) {
@@ -222,9 +263,11 @@ export default function NewProductPage() {
         description: productData.description || null,
         category: productData.category,
         price: parseFloat(productData.price),
-        stock: variants.reduce((sum, v) => sum + v.stock, 0), // Total stock from variants
+        stock: variants.reduce((sum, v) => sum + v.stock, 0),
         status: productData.status,
+        type_id: productData.type_id || null,
         main_image: mainImageUrl,
+        hero_image: heroImageUrl,
         image_2: additionalImageUrls[0],
         image_3: additionalImageUrls[1],
         image_4: additionalImageUrls[2],
@@ -339,6 +382,31 @@ export default function NewProductPage() {
               {collections.length === 0 && (
                 <p className="text-sm text-red-600 mt-2">
                   No collections found. Please create a collection first.
+                </p>
+              )}
+            </div>
+
+            {/* Product Type Selection */}
+            <div className="bg-white rounded-xl border border-border p-6">
+              <h2 className="text-lg font-bold text-foreground mb-4">Product Type</h2>
+              <select
+                value={productData.type_id}
+                onChange={(e) => setProductData({ ...productData, type_id: e.target.value })}
+                className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
+              >
+                <option value="">Select a product type (optional)</option>
+                {productTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Product type determines specifications, features, and page sections displayed on the product page.
+              </p>
+              {productTypes.length === 0 && (
+                <p className="text-sm text-amber-600 mt-2">
+                  No types found. <Link href="/types/new" className="underline">Create a type</Link> to define product page sections.
                 </p>
               )}
             </div>
@@ -596,7 +664,7 @@ export default function NewProductPage() {
 
             {/* Main Product Image */}
             <div className="bg-white rounded-xl border border-border p-6">
-              <h2 className="text-lg font-bold text-foreground mb-4">Main Image *</h2>
+              <h2 className="text-lg font-bold text-foreground mb-4">Main Image * <span className="text-xs font-normal text-muted-foreground">(Product card thumbnail)</span></h2>
               {imagePreviews.main ? (
                 <div className="relative aspect-square rounded-lg overflow-hidden bg-neutral-100">
                   <Image src={imagePreviews.main} alt="Main product" fill className="object-cover" />
@@ -621,6 +689,39 @@ export default function NewProductPage() {
                     type="file"
                     accept="image/*"
                     onChange={handleMainImageChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Hero Banner Image */}
+            <div className="bg-white rounded-xl border border-border p-6">
+              <h2 className="text-lg font-bold text-foreground mb-4">Hero Banner Image <span className="text-xs font-normal text-muted-foreground">(Product page hero)</span></h2>
+              {imagePreviews.hero ? (
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-neutral-100">
+                  <Image src={imagePreviews.hero} alt="Hero banner" fill className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={removeHeroImage}
+                    className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="block border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-foreground transition-colors cursor-pointer">
+                  <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Click to upload hero banner
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Wide banner shown on product page hero section
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleHeroImageChange}
                     className="hidden"
                   />
                 </label>

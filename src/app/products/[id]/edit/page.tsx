@@ -7,6 +7,8 @@ import Image from "next/image"
 import { useRouter, useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
 import { getProduct, updateProduct, createVariant, updateVariant, deleteVariant } from "@/lib/services/products"
+import { getProductTypes } from "@/lib/services/product-types"
+import type { ProductType } from "@/lib/types/database"
 
 interface Collection {
   id: string
@@ -31,6 +33,7 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [collections, setCollections] = useState<Collection[]>([])
+  const [productTypes, setProductTypes] = useState<ProductType[]>([])
   
   const [productData, setProductData] = useState({
     name: "",
@@ -39,28 +42,34 @@ export default function EditProductPage() {
     price: "",
     status: "active",
     collection_id: "",
+    type_id: "",
     meta_title: "",
     meta_description: ""
   })
 
   const [existingImages, setExistingImages] = useState({
     main: "",
+    hero: "",
     additional: ["", "", "", ""]
   })
 
   const [newImages, setNewImages] = useState<{
     main: File | null
+    hero: File | null
     additional: (File | null)[]
   }>({
     main: null,
+    hero: null,
     additional: [null, null, null, null]
   })
 
   const [imagePreviews, setImagePreviews] = useState<{
     main: string | null
+    hero: string | null
     additional: (string | null)[]
   }>({
     main: null,
+    hero: null,
     additional: [null, null, null, null]
   })
 
@@ -70,6 +79,7 @@ export default function EditProductPage() {
   useEffect(() => {
     loadProduct()
     loadCollections()
+    loadProductTypes()
   }, [productId])
 
   const loadProduct = async () => {
@@ -90,7 +100,8 @@ export default function EditProductPage() {
       description: data.description || "",
       price: data.price?.toString() || "",
       status: data.status || "active",
-      collection_id: "", // Will load from collection_products
+      collection_id: "",
+      type_id: data.type_id || "",
       meta_title: data.meta_title || "",
       meta_description: data.meta_description || ""
     })
@@ -98,6 +109,7 @@ export default function EditProductPage() {
     // Set existing images
     setExistingImages({
       main: data.main_image || "",
+      hero: data.hero_image || "",
       additional: [
         data.image_2 || "",
         data.image_3 || "",
@@ -146,6 +158,15 @@ export default function EditProductPage() {
     }
   }
 
+  const loadProductTypes = async () => {
+    const { data, error } = await getProductTypes()
+    if (error) {
+      console.error('Error loading product types:', error)
+    } else if (data) {
+      setProductTypes(data)
+    }
+  }
+
   const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -175,10 +196,28 @@ export default function EditProductPage() {
     }
   }
 
+  const handleHeroImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setNewImages({ ...newImages, hero: file })
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreviews({ ...imagePreviews, hero: reader.result as string })
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const removeMainImage = () => {
     setNewImages({ ...newImages, main: null })
     setImagePreviews({ ...imagePreviews, main: null })
     setExistingImages({ ...existingImages, main: "" })
+  }
+
+  const removeHeroImage = () => {
+    setNewImages({ ...newImages, hero: null })
+    setImagePreviews({ ...imagePreviews, hero: null })
+    setExistingImages({ ...existingImages, hero: "" })
   }
 
   const removeAdditionalImage = (index: number) => {
@@ -262,6 +301,13 @@ export default function EditProductPage() {
         if (url) mainImageUrl = url
       }
 
+      // Upload new hero image if provided
+      let heroImageUrl = existingImages.hero
+      if (newImages.hero) {
+        const url = await uploadImage(newImages.hero, 'hero')
+        if (url) heroImageUrl = url
+      }
+
       // Upload new additional images
       const additionalImageUrls = [...existingImages.additional]
       for (let i = 0; i < newImages.additional.length; i++) {
@@ -280,7 +326,9 @@ export default function EditProductPage() {
         price: parseFloat(productData.price),
         stock: variants.reduce((sum, v) => sum + v.stock, 0),
         status: productData.status,
+        type_id: productData.type_id || null,
         main_image: mainImageUrl,
+        hero_image: heroImageUrl || null,
         image_2: additionalImageUrls[0] || null,
         image_3: additionalImageUrls[1] || null,
         image_4: additionalImageUrls[2] || null,
@@ -415,6 +463,26 @@ export default function EditProductPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Product Type Selection */}
+            <div className="bg-white rounded-xl border border-border p-6">
+              <h2 className="text-lg font-bold text-foreground mb-4">Product Type</h2>
+              <select
+                value={productData.type_id}
+                onChange={(e) => setProductData({ ...productData, type_id: e.target.value })}
+                className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground outline-none"
+              >
+                <option value="">Select a product type (optional)</option>
+                {productTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Determines specifications, features, and page sections on the product page.
+              </p>
             </div>
 
             {/* Basic Information */}
@@ -613,7 +681,7 @@ export default function EditProductPage() {
 
             {/* Main Image */}
             <div className="bg-white rounded-xl border border-border p-6">
-              <h2 className="text-lg font-bold text-foreground mb-4">Main Image</h2>
+              <h2 className="text-lg font-bold text-foreground mb-4">Main Image <span className="text-xs font-normal text-muted-foreground">(Product card)</span></h2>
               {(imagePreviews.main || existingImages.main) ? (
                 <div className="relative aspect-square rounded-lg overflow-hidden bg-neutral-100">
                   <Image 
@@ -638,6 +706,40 @@ export default function EditProductPage() {
                     type="file"
                     accept="image/*"
                     onChange={handleMainImageChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Hero Banner Image */}
+            <div className="bg-white rounded-xl border border-border p-6">
+              <h2 className="text-lg font-bold text-foreground mb-4">Hero Banner <span className="text-xs font-normal text-muted-foreground">(Product page hero)</span></h2>
+              {(imagePreviews.hero || existingImages.hero) ? (
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-neutral-100">
+                  <Image 
+                    src={imagePreviews.hero || existingImages.hero} 
+                    alt="Hero banner" 
+                    fill 
+                    className="object-cover" 
+                  />
+                  <button
+                    type="button"
+                    onClick={removeHeroImage}
+                    className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="block border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-foreground transition-colors cursor-pointer">
+                  <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground mb-1">Click to upload hero banner</p>
+                  <p className="text-xs text-muted-foreground">Wide banner for product page hero</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleHeroImageChange}
                     className="hidden"
                   />
                 </label>

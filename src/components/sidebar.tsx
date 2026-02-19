@@ -26,7 +26,8 @@ import {
   MailOpen,
   Shirt,
   Shield,
-  Briefcase
+  Briefcase,
+  Layers
 } from "lucide-react"
 
 type NavItem = {
@@ -40,6 +41,7 @@ const navigation: NavItem[] = [
   { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Claims", href: "/claims", icon: Shield },
   { name: "Products", href: "/products", icon: Package },
+  { name: "Types", href: "/types", icon: Layers },
   { name: "Merch", href: "/merch", icon: Shirt },
   { name: "Collections", href: "/collections", icon: Grid3x3 },
   { name: "Reviews", href: "/reviews", icon: Star },
