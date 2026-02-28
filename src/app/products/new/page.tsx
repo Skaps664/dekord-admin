@@ -697,7 +697,7 @@ export default function NewProductPage() {
                   </label>
                 ))}
               </div>
-            </div>}
+            </div>
             <div className="bg-white rounded-xl border border-border p-6">
               <h2 className="text-lg font-bold text-foreground mb-4">Main Image * <span className="text-xs font-normal text-muted-foreground">(Product card thumbnail)</span></h2>
               {imagePreviews.main ? (
