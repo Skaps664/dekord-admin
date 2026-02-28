@@ -38,6 +38,7 @@ export default function NewProductPage() {
     description: "",
     price: "",
     status: "active",
+    availability: "in_stock",
     collection_id: "",
     type_id: "",
     meta_title: "",
@@ -265,6 +266,7 @@ export default function NewProductPage() {
         price: parseFloat(productData.price),
         stock: variants.reduce((sum, v) => sum + v.stock, 0),
         status: productData.status,
+        availability: productData.availability as 'in_stock' | 'out_of_stock' | 'coming_soon',
         type_id: productData.type_id || null,
         main_image: mainImageUrl,
         hero_image: heroImageUrl,
@@ -662,7 +664,40 @@ export default function NewProductPage() {
               </select>
             </div>
 
-            {/* Main Product Image */}
+            {/* Availability */}
+            <div className="bg-white rounded-xl border border-border p-6">
+              <h2 className="text-lg font-bold text-foreground mb-4">Availability</h2>
+              <div className="space-y-2">
+                {[
+                  { value: 'in_stock', label: 'In Stock', color: 'bg-green-500', desc: 'Available for purchase' },
+                  { value: 'out_of_stock', label: 'Out of Stock', color: 'bg-red-500', desc: 'Not available for purchase' },
+                  { value: 'coming_soon', label: 'Coming Soon', color: 'bg-purple-500', desc: 'Pre-launch / Pre-order mode' },
+                ].map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      productData.availability === option.value
+                        ? 'border-foreground bg-foreground/5'
+                        : 'border-border hover:border-foreground/30'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="availability"
+                      value={option.value}
+                      checked={productData.availability === option.value}
+                      onChange={(e) => setProductData({ ...productData, availability: e.target.value })}
+                      className="sr-only"
+                    />
+                    <div className={`w-3 h-3 rounded-full ${option.color}`} />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{option.label}</p>
+                      <p className="text-xs text-muted-foreground">{option.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>}
             <div className="bg-white rounded-xl border border-border p-6">
               <h2 className="text-lg font-bold text-foreground mb-4">Main Image * <span className="text-xs font-normal text-muted-foreground">(Product card thumbnail)</span></h2>
               {imagePreviews.main ? (

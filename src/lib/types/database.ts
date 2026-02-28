@@ -62,6 +62,7 @@ export interface Product {
   stock: number
   sku: string | null
   status: string
+  availability: 'in_stock' | 'out_of_stock' | 'coming_soon'
   type_id: string | null
   main_image: string
   hero_image: string | null
