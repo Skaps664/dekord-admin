@@ -4,6 +4,8 @@ import { Order, OrderWithDetails } from '@/lib/types/database'
 interface GetOrdersFilters {
   status?: string
   search?: string
+  limit?: number
+  offset?: number
 }
 
 export async function getOrders(filters?: GetOrdersFilters) {
@@ -23,7 +25,7 @@ export async function getOrders(filters?: GetOrdersFilters) {
           total_price,
           sku
         )
-      `)
+      `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
     // Filter by status
@@ -36,67 +38,67 @@ export async function getOrders(filters?: GetOrdersFilters) {
       query = query.or(`order_number.ilike.%${filters.search}%,shipping_name.ilike.%${filters.search}%,shipping_phone.ilike.%${filters.search}%`)
     }
 
-    const { data, error } = await query
+    if (filters?.limit) {
+      const offset = filters.offset || 0
+      query = query.range(offset, offset + filters.limit - 1)
+    }
+
+    const { data, count, error } = await query
 
     if (error) {
       console.error('Error fetching orders:', error)
-      return { data: null, error: error.message }
+      return { data: null, error: error.message, count: null }
     }
 
-    // Fetch current stock for each order item
-    if (data) {
+    // Fetch current stock efficiently
+    if (data && data.length > 0) {
+      const variantIds = new Set<string>();
+      const productIds = new Set<string>();
+
+      data.forEach(order => {
+        if (order.order_items) {
+          order.order_items.forEach(item => {
+            if (item.variant_id) variantIds.add(item.variant_id);
+            else if (item.product_id) productIds.add(item.product_id);
+          });
+        }
+      });
+
+      // Bulk fetch stocks
+      let variantsStock: Record<string, number> = {};
+      let productsStock: Record<string, number> = {};
+      let merchStock: Record<string, number> = {};
+
+      if (variantIds.size > 0) {
+        const { data: vData } = await supabase.from('product_variants').select('id, stock').in('id', Array.from(variantIds));
+        if (vData) vData.forEach(v => { variantsStock[v.id] = v.stock || 0; });
+      }
+
+      if (productIds.size > 0) {
+        const { data: pData } = await supabase.from('products').select('id, stock').in('id', Array.from(productIds));
+        if (pData) pData.forEach(p => { productsStock[p.id] = p.stock || 0; });
+
+        const { data: mData } = await supabase.from('merch').select('id, quantity_available').in('id', Array.from(productIds));
+        if (mData) mData.forEach(m => { merchStock[m.id] = m.quantity_available || 0; });
+      }
+
+      // Assign stock
       for (const order of data) {
         if (order.order_items) {
           for (const item of order.order_items) {
-            let currentStock = 0
-
-            if (item.variant_id) {
-              // Get stock from product_variants
-              const { data: variantData, error: variantError } = await supabase
-                .from('product_variants')
-                .select('stock')
-                .eq('id', item.variant_id)
-                .single()
-
-              if (!variantError && variantData) {
-                currentStock = variantData.stock || 0
-              }
-            } else if (item.product_id) {
-              // Check if it's a product or merch
-              const { data: productData, error: productCheckError } = await supabase
-                .from('products')
-                .select('stock')
-                .eq('id', item.product_id)
-                .single()
-
-              if (!productCheckError && productData) {
-                // It's a product
-                currentStock = productData.stock || 0
-              } else {
-                // Check if it's merch
-                const { data: merchData, error: merchError } = await supabase
-                  .from('merch')
-                  .select('quantity_available')
-                  .eq('id', item.product_id)
-                  .single()
-
-                if (!merchError && merchData) {
-                  currentStock = merchData.quantity_available || 0
-                }
-              }
-            }
-
-            // Add current stock to the item
-            (item as any).current_stock = currentStock
+            let stock = 0;
+            if (item.variant_id) stock = variantsStock[item.variant_id] || 0;
+            else if (item.product_id) stock = productsStock[item.product_id] ?? merchStock[item.product_id] ?? 0;
+            (item as any).current_stock = stock;
           }
         }
       }
     }
 
-    return { data: data as OrderWithDetails[], error: null }
+    return { data: data as OrderWithDetails[], error: null, count }
   } catch (error) {
     console.error('Error fetching orders:', error)
-    return { data: null, error: 'Failed to fetch orders' }
+    return { data: null, error: 'Failed to fetch orders', count: null }
   }
 }
 
@@ -361,5 +363,33 @@ export async function deleteOrder(orderId: string) {
   } catch (error) {
     console.error('Error deleting order:', error)
     return { error: 'Failed to delete order' }
+  }
+}
+
+// Get order statistics
+export async function getOrderStats() {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('status')
+
+    if (error) {
+      console.error('Error fetching order stats:', error)
+      return { data: null, error: error.message }
+    }
+
+    const stats = {
+      all: data.length,
+      pending: data.filter(o => o.status === 'pending').length,
+      processing: data.filter(o => o.status === 'processing').length,
+      shipped: data.filter(o => o.status === 'shipped').length,
+      delivered: data.filter(o => o.status === 'delivered').length,
+      cancelled: data.filter(o => o.status === 'cancelled').length,
+    }
+
+    return { data: stats, error: null }
+  } catch (error: any) {
+    console.error('Unexpected error fetching order stats:', error)
+    return { data: null, error: 'Failed to fetch order stats' }
   }
 }

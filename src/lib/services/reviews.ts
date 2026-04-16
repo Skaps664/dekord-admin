@@ -129,14 +129,19 @@ export async function getUserReviews(userId: string) {
  */
 export async function deleteReview(reviewId: string) {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('reviews')
       .delete()
       .eq('id', reviewId)
+      .select()
 
     if (error) {
       console.error('Error deleting review:', error)
       return { error: error.message }
+    }
+
+    if (!data || data.length === 0) {
+      return { error: 'Review not deleted. RLS policies likely blocked the operation. Please ensure your Supabase permissions allow this action.' }
     }
 
     return { error: null }

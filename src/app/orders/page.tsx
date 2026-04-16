@@ -19,34 +19,53 @@ import {
   AlertCircle,
   MessageCircle
 } from "lucide-react"
-import { getOrders, updateOrderStatus } from "@/lib/services/orders"
+import { getOrders, updateOrderStatus, getOrderStats } from "@/lib/services/orders"
 import { OrderWithDetails } from "@/lib/types/database"
 
 const statusConfig = {
-  "pending": { color: "bg-gray-100 text-gray-800", icon: Clock, label: "Pending" },
-  "processing": { color: "bg-yellow-100 text-yellow-800", icon: Package, label: "Processing" },
-  "shipped": { color: "bg-blue-100 text-blue-800", icon: Truck, label: "Shipped" },
-  "delivered": { color: "bg-green-100 text-green-800", icon: CheckCircle, label: "Delivered" },
-  "cancelled": { color: "bg-red-100 text-red-800", icon: XCircle, label: "Cancelled" }
+  "pending": { color: "bg-gray-100 text-gray-800", borderColor: "border-gray-300", icon: Clock, label: "Pending" },
+  "processing": { color: "bg-yellow-100 text-yellow-800", borderColor: "border-yellow-400", icon: Package, label: "Processing" },
+  "shipped": { color: "bg-blue-100 text-blue-800", borderColor: "border-blue-400", icon: Truck, label: "Shipped" },
+  "delivered": { color: "bg-green-100 text-green-800", borderColor: "border-green-400", icon: CheckCircle, label: "Delivered" },
+  "cancelled": { color: "bg-red-100 text-red-800", borderColor: "border-red-400", icon: XCircle, label: "Cancelled" }
 }
 
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedStatus, setSelectedStatus] = useState("All")
+  const [selectedStatus, setSelectedStatus] = useState("pending")
   const [orders, setOrders] = useState<OrderWithDetails[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
   const [lastDataLoad, setLastDataLoad] = useState<string | null>(null)
+  const [totalOrders, setTotalOrders] = useState<number>(0)
+  const [stats, setStats] = useState<Record<string, number>>({ all: 0, pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 })
+  const ITEMS_PER_PAGE = 5
 
   useEffect(() => {
     loadOrders()
   }, [selectedStatus, searchQuery])
 
+  useEffect(() => {
+    if (lastDataLoad) {
+      loadStats()
+    } else {
+      loadStats()
+    }
+  }, [lastDataLoad])
+
+  const loadStats = async () => {
+    const { data } = await getOrderStats()
+    if (data) setStats(data)
+  }
+
   const loadOrders = async () => {
     setLoading(true)
-    const { data, error } = await getOrders({
+    const { data, count, error } = await getOrders({
       status: selectedStatus,
-      search: searchQuery
+      search: searchQuery,
+      limit: ITEMS_PER_PAGE,
+      offset: 0
     })
     
     if (error) {
@@ -54,9 +73,29 @@ export default function OrdersPage() {
       alert('Failed to load orders')
     } else if (data) {
       setOrders(data)
+      setTotalOrders(count || 0)
       setLastDataLoad(new Date().toISOString())
     }
     setLoading(false)
+  }
+
+  const loadMoreOrders = async () => {
+    if (loadingMore) return
+    setLoadingMore(true)
+    const { data, error } = await getOrders({
+      status: selectedStatus,
+      search: searchQuery,
+      limit: ITEMS_PER_PAGE,
+      offset: orders.length
+    })
+    
+    if (error) {
+      console.error('Failed to load more orders:', error)
+      alert('Failed to load more orders')
+    } else if (data) {
+      setOrders(prev => [...prev, ...data])
+    }
+    setLoadingMore(false)
   }
 
   const checkForStockUpdates = () => {
@@ -201,7 +240,7 @@ export default function OrdersPage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                All Orders ({orders.length})
+                All Orders ({stats.all})
               </button>
               <button
                 onClick={() => setSelectedStatus('pending')}
@@ -211,7 +250,7 @@ export default function OrdersPage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                Pending ({orders.filter(o => o.status === 'pending').length})
+                Pending ({stats.pending})
               </button>
               <button
                 onClick={() => setSelectedStatus('processing')}
@@ -221,7 +260,7 @@ export default function OrdersPage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                Processing ({orders.filter(o => o.status === 'processing').length})
+                Processing ({stats.processing})
               </button>
               <button
                 onClick={() => setSelectedStatus('shipped')}
@@ -231,7 +270,7 @@ export default function OrdersPage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                Shipped ({orders.filter(o => o.status === 'shipped').length})
+                Shipped ({stats.shipped})
               </button>
               <button
                 onClick={() => setSelectedStatus('delivered')}
@@ -241,7 +280,7 @@ export default function OrdersPage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                Delivered ({orders.filter(o => o.status === 'delivered').length})
+                Delivered ({stats.delivered})
               </button>
               <button
                 onClick={() => setSelectedStatus('cancelled')}
@@ -251,7 +290,7 @@ export default function OrdersPage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                Cancelled ({orders.filter(o => o.status === 'cancelled').length})
+                Cancelled ({stats.cancelled})
               </button>
             </div>
 
@@ -286,6 +325,9 @@ export default function OrdersPage() {
           </div>
         ) : (
           <div className="space-y-4">
+            <div className="text-sm text-neutral-500 mb-4 pl-1 font-medium">
+              Showing {orders.length} out of {selectedStatus.toLowerCase() === 'all' ? stats.all : stats[selectedStatus.toLowerCase() as keyof typeof stats] || 0} orders
+            </div>
             {orders.map((order, index) => {
               const statusKey = order.status.toLowerCase() as keyof typeof statusConfig
               const config = statusConfig[statusKey] || statusConfig.pending
@@ -297,7 +339,7 @@ export default function OrdersPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className="bg-white rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition-shadow"
+                  className={`bg-white rounded-xl border-[2px] ${config.borderColor || 'border-border'} p-6 shadow-sm hover:shadow-md transition-shadow`}
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
                     <div className="flex items-center gap-4">
@@ -305,18 +347,18 @@ export default function OrdersPage() {
                         <div className="flex items-center gap-3 mb-1">
                           <h3 className="text-lg font-bold text-foreground">{order.order_number}</h3>
                           {order.customer_confirmed ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                              <CheckCircle2 className="w-3 h-3" />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-900 text-sm font-bold rounded-full border border-green-200">
+                              <CheckCircle2 className="w-4 h-4" />
                               Confirmed
                             </span>
                           ) : order.confirmation_query ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs font-semibold rounded-full">
-                              <MessageCircle className="w-3 h-3" />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 text-orange-900 text-sm font-bold rounded-full border border-orange-200">
+                              <MessageCircle className="w-4 h-4" />
                               Query
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
-                              <AlertCircle className="w-3 h-3" />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-100 text-yellow-900 text-sm font-bold rounded-full border border-yellow-200">
+                              <AlertCircle className="w-4 h-4" />
                               Not Yet
                             </span>
                           )}
@@ -422,6 +464,25 @@ export default function OrdersPage() {
                 </motion.div>
               )
             })}
+          </div>
+        )}
+        
+        {!loading && orders.length < totalOrders && (
+          <div className="flex justify-center mt-8 pb-8">
+            <button
+              onClick={loadMoreOrders}
+              disabled={loadingMore}
+              className="px-6 py-2.5 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 disabled:opacity-50 inline-flex items-center gap-2 font-medium"
+            >
+              {loadingMore ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                'Load More Orders'
+              )}
+            </button>
           </div>
         )}
       </div>

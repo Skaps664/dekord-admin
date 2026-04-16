@@ -44,7 +44,10 @@ export default function ClaimsPage() {
   const [selectedType, setSelectedType] = useState("All")
   const [claims, setClaims] = useState<Claim[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [totalClaims, setTotalClaims] = useState<number>(0)
   const [stats, setStats] = useState<any>(null)
+  const ITEMS_PER_PAGE = 5
 
   useEffect(() => {
     loadClaims()
@@ -53,10 +56,12 @@ export default function ClaimsPage() {
 
   const loadClaims = async () => {
     setLoading(true)
-    const { data, error } = await getClaims({
+    const { data, count, error } = await getClaims({
       status: selectedStatus,
       claimType: selectedType,
-      search: searchQuery
+      search: searchQuery,
+      limit: ITEMS_PER_PAGE,
+      offset: 0
     })
     
     if (error) {
@@ -64,8 +69,29 @@ export default function ClaimsPage() {
       alert('Failed to load claims')
     } else if (data) {
       setClaims(data)
+      setTotalClaims(count || 0)
     }
     setLoading(false)
+  }
+
+  const loadMoreClaims = async () => {
+    if (loadingMore) return
+    setLoadingMore(true)
+    const { data, error } = await getClaims({
+      status: selectedStatus,
+      claimType: selectedType,
+      search: searchQuery,
+      limit: ITEMS_PER_PAGE,
+      offset: claims.length
+    })
+    
+    if (error) {
+      console.error('Failed to load more claims:', error)
+      alert('Failed to load more claims')
+    } else if (data) {
+      setClaims(prev => [...prev, ...data])
+    }
+    setLoadingMore(false)
   }
 
   const loadStats = async () => {
@@ -380,6 +406,24 @@ export default function ClaimsPage() {
               </tbody>
             </table>
           </div>
+          {!loading && claims.length < totalClaims && (
+            <div className="flex justify-center mt-6 pb-6">
+              <button
+                onClick={loadMoreClaims}
+                disabled={loadingMore}
+                className="px-6 py-2.5 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 disabled:opacity-50 inline-flex items-center gap-2 font-medium"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  'Load More Claims'
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

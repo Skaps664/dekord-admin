@@ -28,13 +28,15 @@ interface GetClaimsFilters {
   claimType?: string
   search?: string
   priority?: string
+  limit?: number
+  offset?: number
 }
 
 export async function getClaims(filters?: GetClaimsFilters) {
   try {
     let query = supabase
       .from('claims')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
 
     // Filter by status
@@ -57,17 +59,22 @@ export async function getClaims(filters?: GetClaimsFilters) {
       query = query.or(`claim_number.ilike.%${filters.search}%,name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,order_number.ilike.%${filters.search}%`)
     }
 
-    const { data, error } = await query
+    if (filters?.limit) {
+      const offset = filters.offset || 0
+      query = query.range(offset, offset + filters.limit - 1)
+    }
+
+    const { data, count, error } = await query
 
     if (error) {
       console.error('Error fetching claims:', error)
-      return { data: null, error: error.message }
+      return { data: null, error: error.message, count: null }
     }
 
-    return { data, error: null }
+    return { data, error: null, count }
   } catch (error) {
     console.error('Unexpected error fetching claims:', error)
-    return { data: null, error: 'Failed to fetch claims' }
+    return { data: null, error: 'Failed to fetch claims', count: null }
   }
 }
 

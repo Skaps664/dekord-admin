@@ -44,40 +44,101 @@ export default function NewTypePage() {
   
   // Specifications
   const [specifications, setSpecifications] = useState<SpecificationCategory[]>([
-    { category: "", icon: "zap", specs: [{ label: "", value: "" }] }
+    {
+      category: "Performance",
+      icon: "zap",
+      specs: [
+        { label: "Power Delivery", value: "60W (20V/3A)" },
+        { label: "Data Transfer Speed", value: "480 Mbps (USB 3.2 Gen 2)" },
+        { label: "Charging Protocol", value: "USB PD 3.0, USB 2.0" },
+        { label: "Video Output", value: "-" },
+      ]
+    },
+    {
+      category: "Build Quality",
+      icon: "shield",
+      specs: [
+        { label: "Cable Jacket", value: "Double-Braided Layer" },
+        { label: "Conductor Material", value: "Tinned Copper (99.9% Pure)" },
+        { label: "Connector Housing", value: "Inner Mold Housing" },
+        { label: "Bend Lifespan", value: "20,000+ Cycles Tested" },
+      ]
+    },
+    {
+      category: "Technical Details",
+      icon: "cpu",
+      specs: [
+        { label: "Wire Gauge", value: "20 AWG" },
+        { label: "Chip", value: "Certified (PD 3.0 Compliant)" },
+        { label: "Shielding", value: "Triple Layer (Al-Foil + Braided)" },
+        { label: "Temperature Range", value: "-20°C to 80°C" },
+      ]
+    },
+    {
+      category: "Certifications",
+      icon: "check-circle",
+      specs: [
+        { label: "Safety Standards", value: "UL, CE, FCC, RoHS" },
+        { label: "USB-IF Standards", value: "Yes" },
+        { label: "MFi Standards", value: "Yes (for Lightning variants)" },
+        { label: "Environmental", value: "RoHS 2.0 Standard" },
+      ]
+    }
   ])
   const [quickSpecs, setQuickSpecs] = useState<QuickSpec[]>([
-    { icon: "zap", label: "", value: "" },
-    { icon: "gauge", label: "", value: "" },
-    { icon: "shield", label: "", value: "" },
+    { icon: "zap", label: "Power Delivery", value: "60W Fast Charging" },
+    { icon: "gauge", label: "Data Transfer", value: "480 Mbps Speed" },
+    { icon: "shield", label: "Durability", value: "20,000+ Bends" },
   ])
 
   // Showcase
   const [showcaseHeading, setShowcaseHeading] = useState("Details that matter")
-  const [showcaseSubheading, setShowcaseSubheading] = useState("")
+  const [showcaseSubheading, setShowcaseSubheading] = useState("Built for the real world. Explore the craft behind each component and why it elevates daily use.")
   const [showcaseItems, setShowcaseItems] = useState<(ShowcaseItem & { file?: File })[]>([
-    { heading: "", text: "", image: "" }
+    { heading: "Premium braid", text: "Soft-touch, high-density weave resists fray without sacrificing flexibility.", image: "/spec-1.webp" },
+    { heading: "Reinforced neck", text: "Overmolded strain relief eliminates weak points where most cables fail.", image: "/spec-2.webp" },
+    { heading: "60W PD", text: "Stable power delivery for phones, tablets, and ultrabooks—no dropouts.", image: "/spec-3.webp" },
+    { heading: "Tangle‑resistant coil", text: "Balanced stiffness-to-flex ratio so it packs cleanly without memory.", image: "/spec-4.webp" },
   ])
 
   // Comparison
   const [comparisonHeading, setComparisonHeading] = useState("REDEFINING THE STANDARD")
   const [comparisonSubheading, setComparisonSubheading] = useState("Not all products are created equal. Here's why we stand apart.")
-  const [comparisonFeatures, setComparisonFeatures] = useState<string[]>([""])
+  const [comparisonFeatures, setComparisonFeatures] = useState<string[]>([
+    "Durability Tested",
+    "100% Pure Copper",
+    "Double-Layer Insulation",
+    "Reinforced  Joints",
+    "High-Density Braided",
+    "Stable PD Chipset",
+  ])
 
   // Features
   const [featuresHeading, setFeaturesHeading] = useState("Why you'll love it")
-  const [featureCards, setFeatureCards] = useState<FeatureCard[]>([{ title: "", body: "" }])
+  const [featureCards, setFeatureCards] = useState<FeatureCard[]>([
+    { title: "Premium braid", body: "Tightly woven nylon with soft-touch hand feel and high abrasion resistance." },
+    { title: "Reinforced necks", body: "Overmolded strain relief prevents kinks and weak points near the connector." },
+    { title: "60W PD", body: "USB Power Delivery for rapid charging on phones, tablets, and ultra-books." },
+    { title: "Clean aesthetics", body: "Modern silhouette designed to complement minimal setups and fashion-forward carry." },
+    { title: "Tangle resistant", body: "Balanced stiffness-to-flex ratio that coils neatly without memory." },
+    { title: "Tested durability", body: "Over 12,000 bend cycles in lab conditions—built to last." },
+  ])
 
   // Lookbook
   const [lookbookImages, setLookbookImages] = useState<(LookbookImage & { file?: File })[]>([
-    { src: "", alt: "" }
+    { src: "/dek-red-6.webp", alt: "Streetwear portrait with cable" },
+    { src: "/dek-blue-2.webp", alt: "Minimal still life charging" },
+    { src: "/dek-yellow-5.webp", alt: "Desk flatlay" },
+    { src: "/dek-black-6.webp", alt: "Macro braid detail" },
+    { src: "/dek-white-7.webp", alt: "Lifestyle shot" },
+    { src: "/dek-red-2.webp", alt: "Product on plinth" },
   ])
 
   // Purchase points
   const [purchasePoints, setPurchasePoints] = useState<PurchasePoint[]>([
-    { icon: "zap", heading: "", text: "" },
-    { icon: "shield", heading: "", text: "" },
-    { icon: "truck", heading: "", text: "" },
+    { icon: "zap", heading: "60W Fast Charging", text: "USB‑C to USB‑C Power Delivery" },
+    { icon: "shield", heading: "1 Year Warranty", text: "Fray-replacement guarantee" },
+    { icon: "truck", heading: "Fast Shipping", text: "Delivery in 3-5 business days" },
   ])
 
   // ---- Spec helpers ----
