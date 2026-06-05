@@ -99,6 +99,32 @@ export default function NewBlogPostPage() {
     })
   }
 
+  // Extracts any embedded base64 images from HTML, uploads them to storage,
+  // and returns the HTML with public URLs instead (avoids query timeouts)
+  const sanitizeContent = async (html: string): Promise<string> => {
+    const base64Regex = /<img[^>]+src="(data:image\/([a-zA-Z]+);base64,[^"]+)"[^>]*>/g
+    const matches = [...html.matchAll(base64Regex)]
+    if (matches.length === 0) return html
+
+    let sanitized = html
+    for (const match of matches) {
+      const dataUrl = match[1]
+      const mimeType = match[2]
+      try {
+        const res = await fetch(dataUrl)
+        const blob = await res.blob()
+        const file = new File([blob], `blog-content-${Date.now()}.${mimeType}`, { type: `image/${mimeType}` })
+        const url = await uploadImage(file, 'blog-content')
+        if (url) {
+          sanitized = sanitized.replace(dataUrl, url)
+        }
+      } catch (err) {
+        console.error('Failed to upload base64 image:', err)
+      }
+    }
+    return sanitized
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -132,12 +158,15 @@ export default function NewBlogPostPage() {
         }
       }
 
+      // Strip any embedded base64 images before saving to avoid payload timeouts
+      const cleanContent = await sanitizeContent(postData.content)
+
       // Create blog post
       const { error } = await createBlogPost({
         title: postData.title,
         slug: postData.slug,
         excerpt: postData.excerpt || null,
-        content: postData.content,
+        content: cleanContent,
         featured_image: featuredImageUrl,
         featured_image_alt: postData.title,
         author_name: postData.author_name,
@@ -258,6 +287,7 @@ export default function NewBlogPostPage() {
                     content={postData.content}
                     onChange={(html) => setPostData({ ...postData, content: html })}
                     placeholder="Write your blog post content here..."
+                    onImageUpload={(file) => uploadImage(file, 'blog-content')}
                   />
                 </div>
               </div>
