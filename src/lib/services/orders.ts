@@ -1,11 +1,30 @@
 import { supabase } from '@/lib/supabase/client'
 import { Order, OrderWithDetails } from '@/lib/types/database'
 
+/** What /api/postex/book reports back after an order moves to Processing. */
+export interface PostExBookingResult {
+  ok: boolean
+  trackingNumber?: string
+  /** PostEx doesn't serve this city — ship it with a different courier. */
+  needsOtherCourier?: boolean
+  reason?: string
+  suggestions?: string[]
+  cityUsed?: string
+  cityMatch?: string
+}
+
 interface GetOrdersFilters {
   status?: string
   search?: string
   limit?: number
   offset?: number
+  /**
+   * Courier problems, as their own view. Overrides `status`.
+   *  - 'needs-courier'  flagged but never booked — no PostEx coverage, bad
+   *                     phone, or the booking failed. Needs a courier decision.
+   *  - 'delivery-issue' booked, but something went wrong in transit.
+   */
+  attention?: 'needs-courier' | 'delivery-issue'
 }
 
 export async function getOrders(filters?: GetOrdersFilters) {
@@ -28,8 +47,14 @@ export async function getOrders(filters?: GetOrdersFilters) {
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
-    // Filter by status
-    if (filters?.status && filters.status !== 'All') {
+    // Courier problems are their own view, independent of order status.
+    // Whether a tracking number exists is what separates "never got booked"
+    // from "booked but the delivery went wrong".
+    if (filters?.attention === 'needs-courier') {
+      query = query.eq('postex_needs_attention', true).is('tracking_number', null)
+    } else if (filters?.attention === 'delivery-issue') {
+      query = query.eq('postex_needs_attention', true).not('tracking_number', 'is', null)
+    } else if (filters?.status && filters.status !== 'All') {
       query = query.eq('status', filters.status.toLowerCase())
     }
 
@@ -294,31 +319,62 @@ export async function updateOrderStatus(
       return { error: error.message }
     }
 
-    // Send notifications
-    const notificationType = status.toLowerCase()
-    if (['processing', 'shipped', 'delivered'].includes(notificationType)) {
-      // Call notification APIs
+    // Book with PostEx as soon as an order starts being prepared.
+    // Runs through an API route because the PostEx token is server-side only.
+    // A courier problem must never undo the status change or the stock
+    // deduction that already happened above, so failures are reported, not thrown.
+    let postexResult: PostExBookingResult | undefined
+    if (status.toLowerCase() === 'processing' && !trackingInfo?.tracking_number) {
       try {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://dekord.online'
-        
-        await fetch(`${siteUrl}/api/send-order-email`, {
+        const response = await fetch('/api/postex/book', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: notificationType, orderId })
+          body: JSON.stringify({ orderId }),
         })
-        
-        await fetch(`${siteUrl}/api/send-whatsapp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: notificationType, orderId })
-        })
-      } catch (notifError) {
-        console.error('Notification error:', notifError)
-        // Don't fail the update if notifications fail
+        postexResult = await response.json()
+      } catch (bookingError) {
+        console.error('PostEx booking request failed:', bookingError)
+        postexResult = { ok: false, reason: 'Could not reach the booking service' }
       }
     }
 
-    return { error: null }
+    // Fire the customer notifications without blocking.
+    //
+    // These used to be awaited one after the other, so if the storefront was
+    // unreachable the whole status update sat there until the browser gave up
+    // — minutes, and worse again for every order in a bulk action. The order is
+    // already saved by this point; telling the customer is best-effort.
+    //
+    // Deliberately no AbortSignal timeout: nothing awaits these, so a timeout
+    // buys nothing, and aborting mid-flight truncates the request body — the
+    // receiving route then fails on request.json() and the notification is lost
+    // for a request that would otherwise have succeeded. A cold Next dev route
+    // can take 40s+ to compile on its first hit, which is exactly when that
+    // used to bite.
+    const notificationType = status.toLowerCase()
+    if (['processing', 'shipped', 'delivered'].includes(notificationType)) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://dekord.online'
+
+      void Promise.allSettled(
+        ['/api/send-order-email', '/api/send-whatsapp'].map(async (path) => {
+          try {
+            const response = await fetch(`${siteUrl}${path}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: notificationType, orderId }),
+            })
+            if (!response.ok) {
+              const detail = await response.json().catch(() => ({}))
+              console.error(`Notification ${path} failed:`, detail?.error ?? response.status)
+            }
+          } catch (notifError) {
+            console.error(`Notification ${path} failed:`, notifError)
+          }
+        })
+      )
+    }
+
+    return { error: null, postex: postexResult }
   } catch (error) {
     console.error('Error updating order status:', error)
     return { error: 'Failed to update order status' }
@@ -371,7 +427,7 @@ export async function getOrderStats() {
   try {
     const { data, error } = await supabase
       .from('orders')
-      .select('status')
+      .select('status, postex_needs_attention, tracking_number')
 
     if (error) {
       console.error('Error fetching order stats:', error)
@@ -385,6 +441,16 @@ export async function getOrderStats() {
       shipped: data.filter(o => o.status === 'shipped').length,
       delivered: data.filter(o => o.status === 'delivered').length,
       cancelled: data.filter(o => o.status === 'cancelled').length,
+      // Flagged but never booked — these need a courier decision from you.
+      'needs-courier': data.filter((o) => {
+        const row = o as { postex_needs_attention?: boolean; tracking_number?: string | null }
+        return row.postex_needs_attention && !row.tracking_number
+      }).length,
+      // Booked, but something went wrong on the way.
+      'delivery-issue': data.filter((o) => {
+        const row = o as { postex_needs_attention?: boolean; tracking_number?: string | null }
+        return row.postex_needs_attention && Boolean(row.tracking_number)
+      }).length,
     }
 
     return { data: stats, error: null }

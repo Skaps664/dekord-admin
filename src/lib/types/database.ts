@@ -135,6 +135,16 @@ export interface Order {
   updated_at: string
   shipped_at: string | null
   delivered_at: string | null
+  // --- PostEx integration ---
+  /** PostEx's own status wording for this shipment. */
+  postex_status?: string | null
+  postex_booked_at?: string | null
+  postex_last_event_at?: string | null
+  /** Why the last booking or sync failed, in plain language. */
+  postex_last_error?: string | null
+  /** Drives the "Needs attention" tab in the orders list. */
+  postex_needs_attention?: boolean | null
+  postex_attention_reason?: string | null
 }
 
 export interface OrderItem {

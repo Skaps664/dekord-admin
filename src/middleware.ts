@@ -32,7 +32,11 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - api/auth/* (authentication API routes)
+     * - api/postex/webhook (called by PostEx, not by a logged-in human —
+     *   it authenticates with its own shared secret header)
+     * - api/postex/sync (also run by the scheduled job; it checks either the
+     *   admin session cookie or the cron secret itself)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/auth).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/auth|api/postex/webhook|api/postex/sync).*)',
   ],
 }

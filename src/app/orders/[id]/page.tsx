@@ -16,8 +16,14 @@ import {
   Clock,
   XCircle,
   CheckCircle2,
-  MessageCircle
+  MessageCircle,
+  AlertCircle,
+  RefreshCw,
+  FileText,
+  Ban,
+  Zap
 } from "lucide-react"
+import { toast } from "sonner"
 import { getOrder, updateOrderStatus, updateOrderNotes } from "@/lib/services/orders"
 import { OrderWithDetails } from "@/lib/types/database"
 
@@ -36,6 +42,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [saving, setSaving] = useState(false)
   const [order, setOrder] = useState<OrderWithDetails | null>(null)
   const [adminNotes, setAdminNotes] = useState("")
+  const [postexBusy, setPostexBusy] = useState<string | null>(null)
   const [courier, setCourier] = useState("")
   const [trackingNumber, setTrackingNumber] = useState("")
   const [trackingUrl, setTrackingUrl] = useState("")
@@ -108,6 +115,81 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       loadOrder()
     }
     setSaving(false)
+  }
+
+  /** Book (or re-book) this order with PostEx. */
+  const handlePostExBook = async () => {
+    if (!order) return
+    setPostexBusy("book")
+    try {
+      const response = await fetch("/api/postex/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id }),
+      })
+      const result = await response.json()
+
+      if (result.ok && result.trackingNumber) {
+        toast.success("Booked with PostEx", { description: `Tracking ${result.trackingNumber}` })
+        loadOrder()
+      } else if (result.needsOtherCourier) {
+        toast.warning("PostEx doesn't deliver there", {
+          description: result.suggestions?.length
+            ? `Did you mean: ${result.suggestions.slice(0, 3).join(", ")}?`
+            : result.reason,
+        })
+      } else {
+        toast.error("Booking failed", { description: result.reason })
+      }
+    } catch {
+      toast.error("Could not reach the booking service")
+    }
+    setPostexBusy(null)
+  }
+
+  /** Ask PostEx directly rather than waiting for the next webhook. */
+  const handlePostExSync = async () => {
+    if (!order) return
+    setPostexBusy("sync")
+    try {
+      const response = await fetch(`/api/postex/sync?orderId=${order.id}`, { method: "POST" })
+      const result = await response.json()
+
+      if (result.ok) {
+        toast.success("Synced with PostEx", { description: result.postexStatus || "No change" })
+        loadOrder()
+      } else {
+        toast.error("Sync failed", { description: result.error })
+      }
+    } catch {
+      toast.error("Could not reach PostEx")
+    }
+    setPostexBusy(null)
+  }
+
+  const handlePostExCancel = async () => {
+    if (!order) return
+    if (!confirm("Cancel this PostEx booking? No rider will come to collect it.")) return
+
+    setPostexBusy("cancel")
+    try {
+      const response = await fetch("/api/postex/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id }),
+      })
+      const result = await response.json()
+
+      if (result.ok) {
+        toast.success("PostEx booking cancelled")
+        loadOrder()
+      } else {
+        toast.error("Could not cancel", { description: result.error })
+      }
+    } catch {
+      toast.error("Could not reach PostEx")
+    }
+    setPostexBusy(null)
   }
 
   const handleNotesUpdate = async () => {
@@ -309,6 +391,113 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
               </select>
+            </div>
+
+            {/* PostEx */}
+            <div className="bg-white rounded-xl border border-neutral-200 p-6">
+              <h2 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                PostEx
+              </h2>
+
+              {order.postex_needs_attention && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm font-semibold text-red-900 flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4" />
+                    {order.postex_attention_reason || "Needs attention"}
+                  </p>
+                  {order.postex_last_error && (
+                    <p className="text-xs text-red-800 mt-1">{order.postex_last_error}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2 text-sm mb-4">
+                <div className="flex justify-between gap-3">
+                  <span className="text-neutral-500">Status</span>
+                  <span className="text-neutral-900 text-right">
+                    {order.postex_status || (order.tracking_number ? "—" : "Not booked")}
+                  </span>
+                </div>
+                {order.tracking_number && order.courier?.toLowerCase() === "postex" && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-neutral-500">Tracking</span>
+                    <span className="text-neutral-900 font-mono text-xs text-right break-all">
+                      {order.tracking_number}
+                    </span>
+                  </div>
+                )}
+                {order.postex_last_event_at && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-neutral-500">Last update</span>
+                    <span className="text-neutral-900 text-right">
+                      {new Date(order.postex_last_event_at).toLocaleString("en-US", {
+                        month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {!order.tracking_number ? (
+                  <button
+                    onClick={handlePostExBook}
+                    disabled={postexBusy !== null}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50 text-sm font-medium"
+                  >
+                    {postexBusy === "book" ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Zap className="w-4 h-4" />
+                    )}
+                    Book with PostEx
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handlePostExSync}
+                      disabled={postexBusy !== null}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50 text-sm font-medium"
+                    >
+                      {postexBusy === "sync" ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                      Sync now
+                    </button>
+
+                    <a
+                      href={`/api/postex/label?trackingNumbers=${encodeURIComponent(order.tracking_number)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors text-sm font-medium"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Print label
+                    </a>
+
+                    <button
+                      onClick={handlePostExCancel}
+                      disabled={postexBusy !== null}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 text-sm font-medium"
+                    >
+                      {postexBusy === "cancel" ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Ban className="w-4 h-4" />
+                      )}
+                      Cancel booking
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <p className="text-xs text-neutral-500 mt-3">
+                Orders book automatically when marked Processing. If PostEx doesn&apos;t deliver to
+                this city, ship with another courier and enter the tracking details below.
+              </p>
             </div>
 
             {/* Tracking Information */}
