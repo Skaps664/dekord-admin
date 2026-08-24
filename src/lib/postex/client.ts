@@ -204,12 +204,31 @@ export function trackOrder(trackingNumber: string): Promise<TrackedOrder> {
   return request<TrackedOrder>(`/v1/track-order/${encodeURIComponent(trackingNumber)}`)
 }
 
-export function trackBulkOrders(trackingNumbers: string[]): Promise<TrackedOrder[]> {
-  return request<TrackedOrder[]>('/v1/track-bulk-order', {
-    method: 'POST',
-    body: { trackingNumber: trackingNumbers },
-    timeoutMs: 30000,
-  })
+/**
+ * Bulk tracking. Three things the PDF gets wrong, all confirmed against the
+ * live API:
+ *   - it's a GET, not a POST (POST returns 405)
+ *   - the parameter is `TrackingNumbers`, not `trackingNumber` (400 otherwise)
+ *   - each result is nested under `trackingResponse`, unlike the single-order
+ *     endpoint which returns the order directly
+ */
+export async function trackBulkOrders(trackingNumbers: string[]): Promise<TrackedOrder[]> {
+  if (trackingNumbers.length === 0) return []
+
+  const query = encodeURIComponent(trackingNumbers.join(','))
+  const raw = await request<Array<TrackedOrder | { trackingResponse?: TrackedOrder }>>(
+    `/v1/track-bulk-order?TrackingNumbers=${query}`,
+    { timeoutMs: 30000 }
+  )
+
+  const list = Array.isArray(raw) ? raw : [raw]
+
+  return list
+    .map((entry) => {
+      const wrapped = (entry as { trackingResponse?: TrackedOrder })?.trackingResponse
+      return wrapped ?? (entry as TrackedOrder)
+    })
+    .filter((entry): entry is TrackedOrder => Boolean(entry?.trackingNumber))
 }
 
 export function cancelOrder(trackingNumber: string): Promise<unknown> {

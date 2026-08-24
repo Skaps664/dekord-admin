@@ -65,6 +65,7 @@ export default function OrdersPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [syncingAll, setSyncingAll] = useState(false)
   const [lastDataLoad, setLastDataLoad] = useState<string | null>(null)
   const [totalOrders, setTotalOrders] = useState(0)
   const [stats, setStats] = useState<Record<string, number>>({
@@ -245,6 +246,36 @@ export default function OrdersPage() {
     }
   }
 
+  /**
+   * Pull the latest status for every in-flight PostEx order.
+   *
+   * The webhook normally keeps things current on its own; this is here so you
+   * are never waiting on the once-daily scheduled sweep (all the Vercel Hobby
+   * plan allows) if a push was ever missed.
+   */
+  const handleSyncAll = async () => {
+    setSyncingAll(true)
+    try {
+      const response = await fetch("/api/postex/sync", { method: "POST" })
+      const result = await response.json()
+
+      if (result.ok) {
+        toast.success(
+          result.checked === 0
+            ? "Nothing in transit to check"
+            : `Checked ${result.checked} order${result.checked === 1 ? "" : "s"}`,
+          { description: result.updated > 0 ? `${result.updated} updated` : "No changes" }
+        )
+        await loadOrders()
+      } else {
+        toast.error("Sync failed", { description: result.error })
+      }
+    } catch {
+      toast.error("Could not reach PostEx")
+    }
+    setSyncingAll(false)
+  }
+
   /** Try booking again after fixing whatever PostEx complained about. */
   const handleRetryBooking = async (order: OrderWithDetails) => {
     setUpdatingOrderId(order.id)
@@ -369,13 +400,24 @@ export default function OrdersPage() {
             <h1 className="text-xl font-semibold text-neutral-900">Orders</h1>
             <p className="text-xs text-neutral-500">{stats.all} orders total</p>
           </div>
-          <button
-            onClick={() => exportToCSV(orders, selectedStatus.toLowerCase())}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Export
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSyncAll}
+              disabled={syncingAll}
+              title="Check PostEx for status updates on everything in transit"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncingAll ? "animate-spin" : ""}`} />
+              Sync PostEx
+            </button>
+            <button
+              onClick={() => exportToCSV(orders, selectedStatus.toLowerCase())}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+          </div>
         </div>
 
         {/* Status tabs */}

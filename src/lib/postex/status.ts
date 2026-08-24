@@ -116,15 +116,22 @@ const RULES: Rule[] = [
     },
   },
 
-  // --- cancellations ---
+  // --- the booking was cancelled at PostEx ---
   {
+    // "Un-Assigned By Me" / "Cancelled" mean the *shipment booking* is gone,
+    // NOT that the customer cancelled their order. The order still needs
+    // fulfilling — rebook it, or ship with another courier.
+    //
+    // Auto-cancelling the order here would silently close a live sale, so this
+    // is flagged for a human instead. (/api/postex/cancel takes the same view:
+    // it cancels the booking and leaves the order status alone.)
     match: (s) =>
       s.includes('cancel') || s.includes('un-assigned') || s.includes('unassigned') || s.includes('void'),
     mapping: {
-      dekordStatus: 'cancelled',
+      dekordStatus: null,
       notifyCustomer: false,
-      attention: null,
-      requiresDecision: false,
+      attention: 'PostEx booking was cancelled — rebook or use another courier',
+      requiresDecision: true,
     },
   },
 
