@@ -143,6 +143,16 @@ export interface CreateOrderPayload {
   orderDetail?: string
   transactionNotes?: string
   pickupAddressCode?: string
+  /**
+   * Parcel weight in kg — the portal's "Booking Weight" column. Absent from the
+   * v4.1.9 guide entirely, but verified against the live API: booking with this
+   * set and reading the order back through `/v1/track-order` returns the exact
+   * value under `bookingWeight`. Omitting it books the parcel at 0 kg.
+   *
+   * PostEx silently discards fields it doesn't recognise, so a wrong name here
+   * fails quietly rather than erroring — don't rename it without re-testing.
+   */
+  bookingWeight?: number
 }
 
 export interface CreateOrderResult {

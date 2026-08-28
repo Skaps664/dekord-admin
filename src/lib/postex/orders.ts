@@ -11,6 +11,15 @@ import { isForwardTransition, mapPostExStatus, type DekordStatus } from './statu
 
 export const POSTEX_COURIER = 'Postex'
 
+/**
+ * Printed in the "Remarks" box on the airway bill — the line the rider reads at
+ * the door, so the customer is called first and allowed to open the parcel.
+ */
+export const POSTEX_STANDING_NOTES = 'Call before delivery & parcel Opening allowed'
+
+/** Every dekord parcel is a cable in a mailer. Booked at 0 kg without this. */
+export const POSTEX_BOOKING_WEIGHT_KG = 0.2
+
 /** Public parcel tracking page shown to the customer. */
 export function trackingUrlFor(trackingNumber: string): string {
   return `https://postex.pk/tracking?cn=${encodeURIComponent(trackingNumber)}`
@@ -192,6 +201,14 @@ export async function bookOrder(order: OrderRow, cityOverride?: string): Promise
       .join(', ')
       .slice(0, 500) || undefined
 
+  // Our standing delivery instruction, with anything the customer asked for
+  // appended so a real request from the buyer is never dropped to make room.
+  const transactionNotes =
+    [POSTEX_STANDING_NOTES, order.customer_notes?.trim() || null]
+      .filter(Boolean)
+      .join(' | ')
+      .slice(0, 500) || undefined
+
   try {
     const result = await postex.createOrder({
       orderRefNumber: order.order_number,
@@ -203,8 +220,9 @@ export async function bookOrder(order: OrderRow, cityOverride?: string): Promise
       items: Math.max(1, itemCount),
       invoiceDivision: 1,
       orderType: 'Normal',
+      bookingWeight: POSTEX_BOOKING_WEIGHT_KG,
       orderDetail,
-      transactionNotes: order.customer_notes || undefined,
+      transactionNotes,
       pickupAddressCode: process.env.POSTEX_PICKUP_ADDRESS_CODE || undefined,
     })
 
